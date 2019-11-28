@@ -55,6 +55,7 @@
 #define ORI_PATH_LOCK "/lock"
 #define ORI_PATH_UDSSOCK "/uds"
 #define ORI_PATH_BACKUP_CONF "/backup.conf"
+#define ORI_PATH_TMP_GRAFT "graft/"
 
 int LocalRepo_Init(const std::string &path, bool barerepo,
                    const std::string &uuid = "");
@@ -105,7 +106,9 @@ public:
     bool hasRemote();
 
     // Repo implementation
-    int distance() { return 0; }
+    int distance() {
+        return 0;
+    }
     Object::sp getObject(const ObjectHash &id);
     ObjectInfo getObjectInfo(const ObjectHash &objId);
     bool hasObject(const ObjectHash &objId);
@@ -113,7 +116,7 @@ public:
     //std::set<ObjectInfo> slowListObjects();
     std::set<ObjectInfo> listObjects();
     int addObject(ObjectType type, const ObjectHash &hash,
-            const std::string &payload);
+                  const std::string &payload);
 
     void sync(); /// sync all changes to disk
 
@@ -123,7 +126,7 @@ public:
     void dumpPackfile(packid_t packfileId);
 
     LocalObject::sp getLocalObject(const ObjectHash &objId);
-    
+
     std::vector<Commit> listCommits();
     std::map<std::string, ObjectHash> listSnapshots();
     ObjectHash lookupSnapshot(const std::string &name);
@@ -157,9 +160,9 @@ public:
 
     /// @returns commit id
     ObjectHash commitFromTree(const ObjectHash &treeHash, Commit &c,
-            const std::string &status="normal");
+                              const std::string &status="normal");
     ObjectHash commitFromObjects(const ObjectHash &treeHash, Repo *objects,
-            Commit &c, const std::string &status="normal");
+                                 Commit &c, const std::string &status="normal");
 
     void gc();
 
@@ -167,7 +170,7 @@ public:
     MetadataLog &getMetadata();
     RefcountMap recomputeRefCounts();
     bool rewriteRefCounts(const RefcountMap &refs);
-    
+
     // Purging Operations
     bool purgeObject(const ObjectHash &objId);
     void decrefLB(const ObjectHash &lbhash, MdTransaction::sp tr);
@@ -183,12 +186,32 @@ public:
     ObjectHash graftSubtree(LocalRepo *r,
                             const std::string &srcPath,
                             const std::string &dstPath);
-
+    ObjectHash extractSubtree(const std::string &srcPath,
+                              const std::string &exportName);
+    ObjectHash copySubtree(LocalRepo *srcRepo,
+                                  const std::string &srcPath,
+                                  const std::string &srcBranch = "",
+                                  const std::string &dstPath = "",
+                                  const std::string &dstBranch = "",
+                                  const std::string &exportName = "",
+                                  const bool copyBlobs = false
+                                  );
+    ObjectHash import(const std::string &srcFSName,
+                      const std::string &srcBranch,
+                      const std::string &dstRelPath,
+                      const std::string &dstBranch="");
+    ObjectHash importAsBranch(const std::string &srcFSName,
+                              const std::string &branchName);
+    ObjectHash importFromBranch(const std::string &dstRelPath,
+                              const std::string &branchName);
     // Working Directory Operations
     std::set<std::string> listBranches();
     std::string getBranch();
+    std::string getBranchName();
     void setBranch(const std::string &name);
+    void setBranch(const std::string &name, const ObjectHash &head);
     ObjectHash getHead();
+    ObjectHash getHead(const std::string &branch);
     void updateHead(const ObjectHash &commitId);
     void setHead(const ObjectHash &commitId);
     Tree getHeadTree(); /// @returns empty tree if HEAD is empty commit

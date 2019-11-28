@@ -225,15 +225,17 @@ Repo::getCommitDag()
     DAG<ObjectHash, Commit> cDag = DAG<ObjectHash, Commit>();
 
     cDag.addNode(ObjectHash(), Commit());
-    for (it = commits.begin(); it != commits.end(); it++) {
-	cDag.addNode((*it).hash(), (*it));
+    for (it = commits.begin(); it != commits.end(); it++)
+    {
+        cDag.addNode((*it).hash(), (*it));
     }
 
-    for (it = commits.begin(); it != commits.end(); it++) {
-	pair<ObjectHash, ObjectHash> p = (*it).getParents();
-	cDag.addEdge(p.first, (*it).hash());
-	if (!p.second.isEmpty())
-	    cDag.addEdge(p.first, it->hash());
+    for (it = commits.begin(); it != commits.end(); it++)
+    {
+        pair<ObjectHash, ObjectHash> p = (*it).getParents();
+        cDag.addEdge(p.first, (*it).hash());
+        if (!p.second.isEmpty())
+            cDag.addEdge(p.first, it->hash());
     }
 
     return cDag;

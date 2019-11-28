@@ -65,24 +65,24 @@ cmd_graft(int argc, char * const argv[])
 
     if (srcRelPath == "") {
         cout << "Error: Source file or directory does not exist!" << endl;
-	return 1;
+        return 1;
     }
 
     if (dstRelPath == "") {
-	// Try stripping last string and recompute
-	string newDstPath = argv[2];
-	if (newDstPath.find_last_of("/") == newDstPath.npos) {
-	    dstName = argv[2];
-	    dstRelPath = "./";
-	} else {
-	    dstName = newDstPath.substr(newDstPath.find_last_of("/") + 1);
-	    dstRelPath = newDstPath.substr(0, newDstPath.find_last_of("/") + 1);
-	}
-	dstRelPath = OriFile_RealPath(dstRelPath);
-	if (dstRelPath == "") {
-	    cout << "Error: Unable to resolve relative paths." << endl;
-	    return 1;
-	}
+        // Try stripping last string and recompute
+        string newDstPath = argv[2];
+        if (newDstPath.find_last_of("/") == newDstPath.npos) {
+            dstName = argv[2];
+            dstRelPath = "./";
+        } else {
+            dstName = newDstPath.substr(newDstPath.find_last_of("/") + 1);
+            dstRelPath = newDstPath.substr(0, newDstPath.find_last_of("/") + 1);
+        }
+        dstRelPath = OriFile_RealPath(dstRelPath);
+        if (dstRelPath == "") {
+            cout << "Error: Unable to resolve relative paths." << endl;
+            return 1;
+        }
     }
 
     dstRelPath = dstRelPath + "/";
@@ -90,22 +90,28 @@ cmd_graft(int argc, char * const argv[])
     srcRoot = LocalRepo::findRootPath(srcRelPath);
     dstRoot = LocalRepo::findRootPath(dstRelPath);
     if (srcRoot[srcRoot.length() - 1] != '/')
-	srcRoot = srcRoot + "/";
+        srcRoot = srcRoot + "/";
     if (dstRoot[dstRoot.length() - 1] != '/')
-	dstRoot = dstRoot + "/";
+        dstRoot = dstRoot + "/";
+
+    cout<<"ryan_graft_srcroot="<<srcRoot<<" "<<dstRoot<<endl;
+
 
     if (srcRoot == "/" || dstRoot == "/") {
         cout << "Warning: source or destination is not a repository." << endl;
         string dstFile = dstRelPath + "/" + dstName;
 
         if (OriFile_IsDirectory(srcRelPath)) {
-            execl("/bin/cp", "cp", "-r", srcRelPath.c_str(), dstFile.c_str(),
-                  (char *)NULL);
+            string cp_cmd = "cp -r "+srcRelPath+" "+dstFile;
+            system(cp_cmd.c_str());
+            // execl("/bin/cp", "cp", "-r", srcRelPath.c_str(), dstFile.c_str(),
+            //       (char *)NULL);
         } else {
-            execl("/bin/cp", "cp", srcRelPath.c_str(), dstFile.c_str(),
-                  (char *)NULL);
+            string cp_cmd = "cp "+srcRelPath+" "+dstFile;
+            system(cp_cmd.c_str());
+            // execl("/bin/cp", "cp", srcRelPath.c_str(), dstFile.c_str(),
+            //       (char *)NULL);
         }
-
         return 0;
     }
 
@@ -119,16 +125,16 @@ cmd_graft(int argc, char * const argv[])
 
     // Append name if it's not specified
     if (dstRelPath[dstRelPath.size() - 1] == '/') {
-	dstName = srcRelPath.substr(srcRelPath.find_last_of("/") + 1);
-	dstRelPath = dstRelPath + dstName;
+        dstName = srcRelPath.substr(srcRelPath.find_last_of("/") + 1);
+        dstRelPath = dstRelPath + dstName;
     }
 
     cout << "Grafting from " << srcRelPath << " to " << dstRelPath << endl;
 
     graftHead = dstRepo.graftSubtree(&srcRepo, srcRelPath, dstRelPath);
     if (graftHead.isEmpty()) {
-	printf("Error: Could not find a file or directory with this name!");
-	return 1;
+        printf("Error: Could not find a file or directory with this name!");
+        return 1;
     }
 
     repository.updateHead(graftHead);

@@ -23,6 +23,8 @@ bool OF_HasFuse();
 std::string OF_RootPath();
 std::string OF_ControlPath();
 std::string OF_RepoPath();
+std::string OF_ControlPath(std::string path);
+std::string OF_RepoPath(std::string path);
 
 #endif /* __FUSE_CMD_H__ */
 

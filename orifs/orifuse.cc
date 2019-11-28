@@ -1160,7 +1160,6 @@ int set_opt_helper(void * data, char const * arg, int key, struct fuse_args *out
 int
 main(int argc, char *argv[])
 {
-    int ch;
     bool createReplica = false;
 
     ori_setup_ori_oper();

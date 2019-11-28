@@ -33,7 +33,7 @@ cmd_branch(int argc, char * const argv[])
     string status;
 
     if (argc == 1) {
-	string branch;
+        string branch;
 
         req.writePStr("branch");
         req.writePStr("get");
@@ -45,9 +45,9 @@ cmd_branch(int argc, char * const argv[])
 
         resp.readLPStr(branch);
 
-	cout << branch << endl;
+        cout << branch << endl;
 
-	return 0;
+        return 0;
     }
 
     if (argc == 2) {

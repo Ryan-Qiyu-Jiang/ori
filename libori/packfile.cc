@@ -191,6 +191,7 @@ Packfile::begin(Index *idx)
 void
 Packfile::commit(PfTransaction *t, Index *idx)
 {
+    DLOG("commit");
     if (t->infos.size() != t->payloads.size()) {
         throw runtime_error("PfTransaction infos.size() != payloads.size())");
     }
@@ -204,6 +205,7 @@ Packfile::commit(PfTransaction *t, Index *idx)
     ASSERT(sizeof(numobjs_t) == sizeof(uint32_t));
     headers_ss.writeUInt32(t->infos.size());
     for (size_t i = 0; i < t->infos.size(); i++) {
+        DLOG("commit %s" , t->infos[i].toString().c_str());
         headers_ss.write(t->infos[i].toString().data(), ObjectInfo::SIZE);
         headers_ss.writeUInt32(t->payloads[i].size());
         ASSERT(sizeof(uint32_t) == sizeof(offset_t));
@@ -226,7 +228,7 @@ Packfile::commit(PfTransaction *t, Index *idx)
         ie.offset = offsets[i];
         ie.packed_size = t->payloads[i].size();
         ie.packfile = packid;
-
+        
         idx->updateEntry(ie.info.hash, ie);
     }
 

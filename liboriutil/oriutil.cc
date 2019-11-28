@@ -63,8 +63,6 @@ using namespace std;
 bool
 Util_IsValidName(const string &path)
 {
-    string::const_iterator it;
-
     if (path.size() == 0)
         return false;
 

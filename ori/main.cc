@@ -70,11 +70,17 @@ int cmd_checkout(int argc, char * const argv[]);
 void usage_cleanup();
 int cmd_cleanup(int argc, char * const argv[]);
 int cmd_diff(int argc, char * const argv[]);
+void usage_export(void);
+int cmd_export(int argc, char * const argv[]);
+void usage_extract(void);
+int cmd_extract(int argc, char * const argv[]);
 int cmd_filelog(int argc, char * const argv[]);
 int cmd_findheads(int argc, char * const argv[]);
 int cmd_gc(int argc, char * const argv[]);
 void usage_graft(void);
 int cmd_graft(int argc, char * const argv[]);
+void usage_import(void);
+int cmd_import(int argc, char * const argv[]);
 void usage_list();
 int cmd_list(int argc, char * const argv[]);
 int cmd_listkeys(int argc, char * const argv[]);
@@ -151,6 +157,20 @@ static Cmd commands[] = {
         CMD_DEBUG,
     },
     {
+        "export",
+        "Export a subtree from a repository as a new repository (NS)",
+        cmd_export,
+        usage_export,
+        CMD_DEBUG, /* 0 to allow aliasing of 'cp' */
+    },
+    {
+        "extract",
+        "Export a subtree from a branch (NS)",
+        cmd_extract,
+        usage_extract,
+        CMD_DEBUG | CMD_NEED_FUSE, /* 0 to allow aliasing of 'cp' */
+    },
+    {
         "filelog",
         "Display a log of change to the specified file",
         cmd_filelog,
@@ -177,6 +197,13 @@ static Cmd commands[] = {
         cmd_graft,
         usage_graft,
         CMD_DEBUG, /* 0 to allow aliasing of 'cp' */
+    },
+    {
+        "import",
+        "Import a repository into a local repository (NS)",
+        cmd_import,
+        usage_import,
+        CMD_DEBUG | CMD_NEED_FUSE, /* 0 to allow aliasing of 'cp' */
     },
     {
         "help",

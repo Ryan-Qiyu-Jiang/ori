@@ -470,7 +470,6 @@ string
 OriCommand::cmd_branch(strstream &str)
 {
     FUSE_PLOG("Command: branch");
-
     string subcmd;
     strwstream resp;
     LocalRepo *repo = priv->getRepo();
@@ -484,7 +483,10 @@ OriCommand::cmd_branch(strstream &str)
     }
     if (subcmd == "set") {
         string branch;
-        str.readPStr(branch);
+        str.readLPStr(branch);
+        if (branch == "") {
+            return "Error: empty branch name";
+        }
 
         repo->setBranch(branch);
 

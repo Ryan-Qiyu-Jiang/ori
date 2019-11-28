@@ -58,16 +58,20 @@ public:
     void serve();
     
     void printError(const std::string &what);
-    void cmd_hello();
-    void cmd_listObjs();
-    void cmd_listCommits();
-    void cmd_readObjs();
-    void cmd_getObjInfo();
-    void cmd_getHead();
-    void cmd_getFSID();
-    void cmd_getVersion();
-    void cmd_listExt();
     void cmd_callExt();
+    void cmd_extractSubtree();
+    void cmd_importAsBranch();
+    void cmd_import();
+    void cmd_getFSID();
+    void cmd_getHead();
+    void cmd_getObjInfo();
+    void cmd_getVersion();
+    void cmd_hello();
+    void cmd_listCommits();
+    void cmd_listExt();
+    void cmd_listObjs();
+    void cmd_readObjs();
+    
 private:
     UDSServer *uds;
     int fd;

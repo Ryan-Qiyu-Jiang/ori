@@ -103,3 +103,50 @@ string OF_RepoPath()
     return string(buf);
 }
 
+string OF_ControlPath(string path)
+{
+    while (path.size() > 0) {
+        string control_path = path + "/" + ORI_CONTROL_FILENAME;
+        if (OriFile_Exists(control_path)) {
+            return control_path;
+        }
+        path = OriFile_Dirname(path);
+    }
+
+    return "";
+}
+
+string OF_RepoPath(string path)
+{
+    int status;
+    string controlPath = OF_ControlPath(path);
+    printf("ryan controlPath=%s\n", controlPath.c_str());
+    int fd;
+    struct stat sb;
+    char buf[1024];
+
+    if (controlPath.size() == 0)
+        return "";
+
+    fd = open(controlPath.c_str(), O_RDONLY);
+    if (fd < 0) {
+        perror("OF_RepoPath: open");
+        return "";
+    }
+
+    status = fstat(fd, &sb);
+    if (status < 0) {
+        perror("OF_RepoPath: fstat");
+        return "";
+    }
+
+    status = read(fd, buf, sb.st_size);
+    if (status < 0) {
+        perror("OF_RepoPath: read");
+        return "";
+    }
+
+    buf[status] = '\0';
+
+    return string(buf);
+}

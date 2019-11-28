@@ -95,6 +95,74 @@ ObjectHash UDSRepo::getHead()
     return hash;
 }
 
+ObjectHash UDSRepo::extractSubtree(string srcPath, string exportName)
+{
+    client->sendCommand("extract");
+
+    strwstream ss;
+    ss.writePStr(srcPath);
+    ss.writePStr(exportName);
+
+    client->sendData(ss.str());
+
+    ObjectHash hash;
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        bs->readHash(hash);
+    }
+    return hash;
+}
+
+ObjectHash UDSRepo::importAsBranch(const std::string &srcFSName,
+                                   const std::string &branchName)
+{
+    client->sendCommand("import as branch");
+
+    strwstream ss;
+    ss.writePStr(srcFSName);
+    ss.writePStr(branchName);
+    client->sendData(ss.str());
+
+    ObjectHash hash;
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        bs->readHash(hash);
+    } else {
+        cout <<"resp is not ok!!!! :(\n";
+    }
+
+    return hash;
+}
+
+ObjectHash UDSRepo::import(const std::string &srcFSName,
+                           const std::string &branchName,
+                           const std::string &dstRelPath)
+{
+    client->sendCommand("import");
+
+    strwstream ss;
+    ss.writePStr(srcFSName);
+    ss.writePStr(branchName);
+    ss.writePStr(dstRelPath);
+    client->sendData(ss.str());
+
+    ObjectHash hash;
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        bs->readHash(hash);
+    } else {
+        cout <<"resp is not ok!!!! :(\n";
+    }
+
+    return hash;
+}
+
 int
 UDSRepo::distance()
 {
@@ -109,7 +177,7 @@ UDSRepo::distance()
     bytestream::ap bs(client->getStream());
     std::string version;
     bs->readPStr(version);
-    
+
     sw.stop();
 
     return sw.getElapsedMS();
@@ -143,17 +211,17 @@ Object::sp UDSRepo::getObject(const ObjectHash &id)
         }
 
         switch (info.getAlgo()) {
-            case ObjectInfo::ZIPALGO_NONE:
-                payloads[info.hash] = payload;
-                break;
-            case ObjectInfo::ZIPALGO_FASTLZ:
-                payloads[info.hash] = zipstream(new strstream(payload),
-                                                DECOMPRESS,
-                                                info.payload_size).readAll();
-                break;
-            case ObjectInfo::ZIPALGO_LZMA:
-            case ObjectInfo::ZIPALGO_UNKNOWN:
-                NOT_IMPLEMENTED(false);
+        case ObjectInfo::ZIPALGO_NONE:
+            payloads[info.hash] = payload;
+            break;
+        case ObjectInfo::ZIPALGO_FASTLZ:
+            payloads[info.hash] = zipstream(new strstream(payload),
+                                            DECOMPRESS,
+                                            info.payload_size).readAll();
+            break;
+        case ObjectInfo::ZIPALGO_LZMA:
+        case ObjectInfo::ZIPALGO_UNKNOWN:
+            NOT_IMPLEMENTED(false);
         }
         return Object::sp(new UDSObject(this, info));
     }
@@ -237,7 +305,7 @@ std::set<ObjectInfo> UDSRepo::listObjects()
 
 int
 UDSRepo::addObject(ObjectType type, const ObjectHash &hash,
-        const std::string &payload)
+                   const std::string &payload)
 {
     NOT_IMPLEMENTED(false);
     return -1;

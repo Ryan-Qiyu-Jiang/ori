@@ -36,6 +36,12 @@ public:
     std::string getUUID();
     std::string getVersion();
     ObjectHash getHead();
+    ObjectHash extractSubtree(std::string srcPath, std::string exportName);
+    ObjectHash importAsBranch(const std::string &srcFSName,
+                              const std::string &branchName);
+    ObjectHash import(const std::string &srcFSName,
+                      const std::string &branchName,
+                      const std::string &dirRelPath);
     int distance();
 
     Object::sp getObject(const ObjectHash &id);
@@ -44,7 +50,7 @@ public:
     bytestream *getObjects(const ObjectHashVec &objs);
     std::set<ObjectInfo> listObjects();
     int addObject(ObjectType type, const ObjectHash &hash,
-            const std::string &payload);
+                  const std::string &payload);
     std::vector<Commit> listCommits();
 
     // Transport
@@ -56,7 +62,7 @@ public:
                                 const std::string &data);
 private:
     UDSClient *client;
-    
+
     std::string &_payload(const ObjectHash &id);
     void _addPayload(const ObjectHash &id, const std::string &payload);
     void _clearPayload(const ObjectHash &id);

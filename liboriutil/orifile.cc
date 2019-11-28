@@ -109,6 +109,22 @@ OriFile_IsDirectory(const string &path)
         return false;
 }
 
+bool
+OriFile_LS(const string &path, vector<struct dirent*> &sub_file_entries)
+{
+    DIR *dir = opendir(path.c_str()); 
+    if (dir == NULL) {
+        cout << "couldn't open path dir" << endl;
+        return 1;
+    }
+
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL) {
+        sub_file_entries.push_back(de);
+    }
+    return 0;
+}
+
 /*
  * Get the file size.
  */

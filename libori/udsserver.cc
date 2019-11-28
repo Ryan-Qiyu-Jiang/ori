@@ -214,6 +214,7 @@ UDSSession::forceExit()
 void
 UDSSession::printError(const std::string &what)
 {
+    DLOG("what");
     fdwstream fs(fd);
 
     fs.writeUInt8(ERROR);
@@ -269,10 +270,85 @@ UDSSession::serve() {
         else if (command == "ext call") {
             cmd_callExt();
         }
+        else if (command == "extract") {
+            cmd_extractSubtree();
+        }
+        else if (command == "import") {
+            cmd_import();
+        }
+        else if (command == "import as branch") {
+            cmd_importAsBranch();
+        }
         else {
+            DLOG("hit unknown");
             printError("Unknown command");
         }
     }
+}
+
+void UDSSession::cmd_extractSubtree()
+{
+    DLOG("extractSubtree");
+    fdwstream fsw(fd);
+    fdstream in(fd, -1);
+
+    fsw.writeUInt8(OK);
+
+    string srcPath, exportName;
+
+    if (in.readPStr(srcPath) == 0 || in.readPStr(exportName) == 0) {
+        fsw.writeHash(EMPTY_COMMIT); // x0
+        return;
+    }
+
+    DLOG("extract srcPath=%s, exportName=%s", srcPath.c_str(), exportName.c_str());
+
+    fsw.writeHash(repo->extractSubtree(srcPath, exportName));
+}
+
+void UDSSession::cmd_importAsBranch()
+{
+    DLOG("import as branch");
+    fdwstream fsw(fd);
+    fdstream in(fd, -1);
+
+    fsw.writeUInt8(OK);
+
+    string srcFSName, branchName;
+
+    if (in.readPStr(srcFSName) == 0 ||
+        in.readPStr(branchName) == 0)
+    {
+        fsw.writeHash(EMPTY_COMMIT); // x0
+        return;
+    }
+
+    DLOG("extract srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
+
+    fsw.writeHash(repo->importAsBranch(srcFSName, branchName));
+}
+
+void UDSSession::cmd_import()
+{
+    DLOG("import");
+    fdwstream fsw(fd);
+    fdstream in(fd, -1);
+
+    fsw.writeUInt8(OK);
+
+    string srcFSName, branchName, dstRelPath;
+
+    if (in.readPStr(srcFSName) == 0 ||
+        in.readPStr(branchName) == 0 ||
+        in.readPStr(dstRelPath) == 0)
+    {
+        fsw.writeHash(EMPTY_COMMIT); // x0
+        return;
+    }
+
+    DLOG("extract srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
+
+    fsw.writeHash(repo->import(srcFSName, branchName, dstRelPath));
 }
 
 void UDSSession::cmd_hello()
@@ -327,7 +403,7 @@ void UDSSession::cmd_readObjs()
         objs.push_back(hash);
         DLOG("readObjs: %d of %d - %s", i + 1, numObjs, hash.hex().c_str());
     }
-    
+
     DLOG("uds readObjs");
     fdwstream fs(fd);
     fs.writeUInt8(OK);

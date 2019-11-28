@@ -46,10 +46,14 @@
 #include <oriutil/oricrypt.h>
 #include <oriutil/scan.h>
 #include <oriutil/zeroconf.h>
+// #include <oriutil/orifile.h>
+
 #include <ori/largeblob.h>
 #include <ori/localrepo.h>
 #include <ori/sshrepo.h>
 #include <ori/remoterepo.h>
+
+// #include "fuse_cmd.h"
 
 using namespace std;
 
@@ -125,14 +129,14 @@ LocalRepo_Init(const string &rootPath, bool bareRepo, const string &uuid)
     tmpDir = oriPath + ORI_PATH_HEADS + "default";
     if (!OriFile_WriteFile(EMPTY_COMMIT.hex(), tmpDir))
     {
-	perror("Could not create default branch");
-	return 1;
+        perror("Could not create default branch");
+        return 1;
     }
 
     // Set branch name
     if (!OriFile_WriteFile("@default", 8, oriPath + ORI_PATH_HEAD)) {
-	perror("Could not create branch file");
-	return 1;
+        perror("Could not create branch file");
+        return 1;
     }
 
     // Create refs/remotes directory
@@ -278,16 +282,16 @@ LocalRepo::open(const string &root)
 
     map<string, Peer>::iterator it;
     for (it = peers.begin(); it != peers.end(); it++) {
-	if ((*it).second.isInstaCloning()) {
+        if ((*it).second.isInstaCloning()) {
             // XXX: Open remote connection
-	    if (resumeRepo.connect((*it).second.getUrl())) {
-		LOG("Autoconnected to '%s' to resume InstaClone.",
-		    (*it).second.getUrl().c_str());
+            if (resumeRepo.connect((*it).second.getUrl())) {
+                LOG("Autoconnected to '%s' to resume InstaClone.",
+                    (*it).second.getUrl().c_str());
                 cacheRemoteObjects = true;
-		remoteRepo = resumeRepo.get();
-		break;
-	    }
-	}
+                remoteRepo = resumeRepo.get();
+                break;
+            }
+        }
     }
 
     opened = true;
@@ -429,7 +433,7 @@ LocalObject::sp LocalRepo::getLocalObject(const ObjectHash &objId)
     if (currTransaction.get()) {
         if (currTransaction->has(objId)) {
             return LocalObject::sp(new LocalObject(currTransaction,
-                        currTransaction->hashToIx[objId]));
+                                                   currTransaction->hashToIx[objId]));
         }
     }
 
@@ -438,7 +442,7 @@ LocalObject::sp LocalRepo::getLocalObject(const ObjectHash &objId)
      * instacloning.
      */
     if (!index.hasObject(objId))
-	return LocalObject::sp();
+        return LocalObject::sp();
 
     const IndexEntry &ie = index.getEntry(objId);
     Packfile::sp packfile = packfiles->getPackfile(ie.packfile);
@@ -486,8 +490,9 @@ LocalRepo::objIdToPath(const ObjectHash &objId)
 
 int
 LocalRepo::addObject(ObjectType type, const ObjectHash &hash,
-        const std::string &payload)
+                     const std::string &payload)
 {
+    DLOG("addObject=%s",hash.hex().c_str());
     ASSERT(opened);
     ASSERT(!hash.isEmpty());
 
@@ -572,6 +577,7 @@ LocalRepo::addCommit(/* const */ Commit &commit)
     string refPath;
 
     if (hasObject(hash)) {
+        DLOG("already have commit hash=%s",hash.hex().c_str());
         return hash;
     }
 
@@ -589,7 +595,7 @@ LocalRepo::addCommit(/* const */ Commit &commit)
     }*/
 
     if (commit.getSnapshot() != "") {
-	snapshots.addSnapshot(commit.getSnapshot(), hash);
+        snapshots.addSnapshot(commit.getSnapshot(), hash);
     }
     if (commit.getMessage() == "Orisync automatic snapshot") {
         snapshots.addOrisyncSnapshot((int64_t)commit.getTime(), hash);
@@ -656,12 +662,12 @@ LocalRepo::verifyObject(const ObjectHash &objId)
     ObjectType type;
 
     if (!hasObject(objId))
-	return "Object not found!";
+        return "Object not found!";
 
     // XXX: Add better error handling
     o = getLocalObject(objId);
     if (!o)
-	return "Cannot open object!";
+        return "Cannot open object!";
 
     type = o->getInfo().type;
     if (type == ObjectInfo::Null)
@@ -679,48 +685,48 @@ LocalRepo::verifyObject(const ObjectHash &objId)
     }
 
     switch(type) {
-	case ObjectInfo::Commit:
-	{
-	    // XXX: Verify tree and parents exist
-	    break;
-	}
-	case ObjectInfo::Tree:
-	{
-            Tree t;
-            t.fromBlob(o->getPayload());
-            for (map<string, TreeEntry>::iterator it = t.tree.begin();
-                    it != t.tree.end();
-                    it++) {
-                if (!(*it).second.hasBasicAttrs())
-                    return string("TreeEntry ") + (*it).first + " missing basic attrs";
-            }
-
-	    // XXX: Verify subtrees and blobs exist
-	    break;
-	}
-	case ObjectInfo::Blob:
-	{
-	    break;
-	}
-        case ObjectInfo::LargeBlob:
-        {
-            LargeBlob lb(this);
-            lb.fromBlob(o->getPayload());
-            for (map<uint64_t, LBlobEntry>::iterator it = lb.parts.begin();
-                 it != lb.parts.end(); it++)
-            {
-                if (it->second.hash.isEmpty()) {
-                    return "LargeBlob contains an empty hash!";
-                }
-            }
-            // XXX: Verify fragments
-            // XXX: Verify file hash matches largeObject's file hash
-            break;
+    case ObjectInfo::Commit:
+    {
+        // XXX: Verify tree and parents exist
+        break;
+    }
+    case ObjectInfo::Tree:
+    {
+        Tree t;
+        t.fromBlob(o->getPayload());
+        for (map<string, TreeEntry>::iterator it = t.tree.begin();
+                it != t.tree.end();
+                it++) {
+            if (!(*it).second.hasBasicAttrs())
+                return string("TreeEntry ") + (*it).first + " missing basic attrs";
         }
-	case ObjectInfo::Purged:
-	    break;
-	default:
-	    return "Object with unknown type!";
+
+        // XXX: Verify subtrees and blobs exist
+        break;
+    }
+    case ObjectInfo::Blob:
+    {
+        break;
+    }
+    case ObjectInfo::LargeBlob:
+    {
+        LargeBlob lb(this);
+        lb.fromBlob(o->getPayload());
+        for (map<uint64_t, LBlobEntry>::iterator it = lb.parts.begin();
+                it != lb.parts.end(); it++)
+        {
+            if (it->second.hash.isEmpty()) {
+                return "LargeBlob contains an empty hash!";
+            }
+        }
+        // XXX: Verify fragments
+        // XXX: Verify file hash matches largeObject's file hash
+        break;
+    }
+    case ObjectInfo::Purged:
+        break;
+    default:
+        return "Object with unknown type!";
     }
 
     if (!o->getInfo().hasAllFields()) {
@@ -826,7 +832,7 @@ LocalRepo::rebuildIndex()
         ris.id = *it;
         pf->readEntries(rebuildIndexCb, (void *)&ris);
     }
-    
+
     return true;
 }
 
@@ -894,7 +900,7 @@ LocalRepo::lookupSnapshot(const string &name)
     map<string, ObjectHash>::iterator it = snaps.find(name);
 
     if (it != snaps.end())
-	return (*it).second;
+        return (*it).second;
 
     return ObjectHash();
 }
@@ -993,7 +999,7 @@ LocalRepo::pull(Repo *r)
 
         // Add user snapshots
         if (nc.getSnapshot() != "") {
-	          snapshots.addSnapshot(nc.getSnapshot(), nc.hash());
+            snapshots.addSnapshot(nc.getSnapshot(), nc.hash());
         }
         // Snapshots pulled from remote are added if they are orisync snapshots
         if (nc.getMessage() == "Orisync automatic snapshot") {
@@ -1077,11 +1083,11 @@ LocalRepo::multiPull(RemoteRepo::sp defaultRemote)
     MultiPullOp mpo(*this);
 
     struct event_base *evbase = event_base_new();
-#ifndef WITHOUT_MDNS 
+#ifndef WITHOUT_MDNS
     struct event *mdns_event = MDNS_Browse(evbase);
     event_add(mdns_event, NULL);
     MDNS_RegisterBrowseCallback(std::bind(&MultiPullOp::addCandidate,
-                &mpo, std::placeholders::_1));
+                                          &mpo, std::placeholders::_1));
 #endif
 
     mpo.remotes.push_back(defaultRemote);
@@ -1298,7 +1304,7 @@ LocalRepo::addCommitBackrefs(const Commit &c, MdTransaction::sp tr)
         metadata.addRef(c.getParents().first, tr);
     if (!c.getParents().second.isEmpty())
         metadata.addRef(c.getParents().second, tr);
-    
+
     ObjectHash treeHash = c.getTree();
     if (treeHash.isEmpty()) {
         throw std::runtime_error("Commit tree is empty!");
@@ -1363,7 +1369,7 @@ LocalRepo::copyObjectsFromTree(Repo *other, const Tree &t)
 
 ObjectHash
 LocalRepo::commitFromTree(const ObjectHash &treeHash, Commit &c,
-        const std::string &status)
+                          const std::string &status)
 {
     ASSERT(opened);
 
@@ -1381,13 +1387,13 @@ LocalRepo::commitFromTree(const ObjectHash &treeHash, Commit &c,
         string user = Util_GetFullname();
         c.setUser(user);
     }
-    
+
     c.setTree(treeHash);
     if (hasMergeState()) {
-	MergeState m = getMergeState();
-	c.setParents(m.getParents().first, m.getParents().second);
+        MergeState m = getMergeState();
+        c.setParents(m.getParents().first, m.getParents().second);
     } else {
-	c.setParents(getHead());
+        c.setParents(getHead());
     }
 
     try {
@@ -1412,7 +1418,7 @@ LocalRepo::commitFromTree(const ObjectHash &treeHash, Commit &c,
 
         // Remove merge state
         /*
-         * XXX: During a crash it's possible the merge state needs to be 
+         * XXX: During a crash it's possible the merge state needs to be
          * removed, because the commit has been updated.
          */
         if (hasMergeState()) {
@@ -1427,7 +1433,7 @@ LocalRepo::commitFromTree(const ObjectHash &treeHash, Commit &c,
 
 ObjectHash
 LocalRepo::commitFromObjects(const ObjectHash &treeHash, Repo *objects,
-        Commit &c, const std::string &status)
+                             Commit &c, const std::string &status)
 {
     ASSERT(opened);
 
@@ -1444,7 +1450,7 @@ LocalRepo::commitFromObjects(const ObjectHash &treeHash, Repo *objects,
 }
 
 /*
- * Garbage Collect. Attempt to reduce wasted space from deleted objects and 
+ * Garbage Collect. Attempt to reduce wasted space from deleted objects and
  * metadata.
  */
 void
@@ -1518,7 +1524,7 @@ LocalRepo::getObjectInfo(const ObjectHash &objId)
     if (index.hasObject(objId)) {
         return index.getInfo(objId);
     }
-    
+
     Monitor lock(remoteLock);
 
     if (remoteRepo != NULL) {
@@ -1553,52 +1559,52 @@ LocalRepo::recomputeRefCounts()
             it++) {
         const ObjectHash &hash = (*it).hash;
         switch ((*it).type) {
-            case ObjectInfo::Commit:
-            {
-                Commit c = getCommit(hash);
-                
-                rval[c.getTree()] += 1;
-                if (c.getParents().first != EMPTY_COMMIT) {
-                    rval[c.getParents().first] += 1;
-                }
-                if (!c.getParents().second.isEmpty()) {
-                    rval[c.getParents().second] += 1;
-                }
-                
-                break;
-            }
-            case ObjectInfo::Tree:
-            {
-                Tree t = getTree(hash);
-                map<string, TreeEntry>::iterator tt;
+        case ObjectInfo::Commit:
+        {
+            Commit c = getCommit(hash);
 
-                for  (tt = t.tree.begin(); tt != t.tree.end(); tt++) {
-                    ObjectHash h = (*tt).second.hash;
-                    rval[h] += 1;
-                }
-                break;
+            rval[c.getTree()] += 1;
+            if (c.getParents().first != EMPTY_COMMIT) {
+                rval[c.getParents().first] += 1;
             }
-            case ObjectInfo::LargeBlob:
-            {
-                LargeBlob lb(this);
-                Object::sp o(getObject(hash));
-                lb.fromBlob(o->getPayload());
+            if (!c.getParents().second.isEmpty()) {
+                rval[c.getParents().second] += 1;
+            }
 
-                for (map<uint64_t, LBlobEntry>::iterator pit = lb.parts.begin();
-                        pit != lb.parts.end();
-                        pit++) {
-                    ObjectHash h = (*pit).second.hash;
-                    rval[h] += 1;
-                }
-                break;
+            break;
+        }
+        case ObjectInfo::Tree:
+        {
+            Tree t = getTree(hash);
+            map<string, TreeEntry>::iterator tt;
+
+            for  (tt = t.tree.begin(); tt != t.tree.end(); tt++) {
+                ObjectHash h = (*tt).second.hash;
+                rval[h] += 1;
             }
-            case ObjectInfo::Blob:
-	    case ObjectInfo::Purged:
-                break;
-            default:
-                printf("Unsupported object type!\n");
-                PANIC();
-                break;
+            break;
+        }
+        case ObjectInfo::LargeBlob:
+        {
+            LargeBlob lb(this);
+            Object::sp o(getObject(hash));
+            lb.fromBlob(o->getPayload());
+
+            for (map<uint64_t, LBlobEntry>::iterator pit = lb.parts.begin();
+                    pit != lb.parts.end();
+                    pit++) {
+                ObjectHash h = (*pit).second.hash;
+                rval[h] += 1;
+            }
+            break;
+        }
+        case ObjectInfo::Blob:
+        case ObjectInfo::Purged:
+            break;
+        default:
+            printf("Unsupported object type!\n");
+            PANIC();
+            break;
         }
     }
 
@@ -1688,8 +1694,8 @@ LocalRepo::purgeCommit(const ObjectHash &commitId)
 
     // Check all branches
     if (commitId == getHead()) {
-	LOG("Cannot purge head of a branch");
-	return false;
+        LOG("Cannot purge head of a branch");
+        return false;
     }
 
     rootTree = c.getTree();
@@ -1703,8 +1709,8 @@ LocalRepo::purgeCommit(const ObjectHash &commitId)
     // Purge objects -- TODO Needs to be journaled this is racey
     std::set<ObjectHash> objs = getSubtreeObjects(rootTree);
     for (std::set<ObjectHash>::iterator it = objs.begin(); it != objs.end(); it++) {
-	if (metadata.getRefCount(*it) == 0)
-	    purgeObject(*it);
+        if (metadata.getRefCount(*it) == 0)
+            purgeObject(*it);
     }
 
     tx = metadata.begin();
@@ -1749,7 +1755,7 @@ LocalRepo::gcOrisyncCommit(int64_t time)
         if (it->first > time) {
             return;
         }
-        
+
         // Purge snapshot
         if (!purgeCommit(it->second)) {
             continue;
@@ -1823,24 +1829,24 @@ LocalRepo::walkHistory(HistoryCB &cb)
     nextLevel.insert(getHead());
 
     while (!nextLevel.empty()) {
-	curLevel = nextLevel;
-	nextLevel.clear();
+        curLevel = nextLevel;
+        nextLevel.clear();
 
-	for (it = curLevel.begin(); it != curLevel.end(); it++) {
-	    Commit c = getCommit(*it);
-	    pair<ObjectHash, ObjectHash> p = c.getParents();
+        for (it = curLevel.begin(); it != curLevel.end(); it++) {
+            Commit c = getCommit(*it);
+            pair<ObjectHash, ObjectHash> p = c.getParents();
             ObjectHash val;
 
-	    val = cb.cb(*it, &c);
+            val = cb.cb(*it, &c);
             if (!val.isEmpty())
                 rval.insert(val);
 
             if (p.first != EMPTY_COMMIT) {
-	        nextLevel.insert(p.first);
-	        if (!p.second.isEmpty())
-		    nextLevel.insert(p.second);
+                nextLevel.insert(p.first);
+                if (!p.second.isEmpty())
+                    nextLevel.insert(p.second);
             }
-	}
+        }
     }
 
     return rval;
@@ -1861,15 +1867,15 @@ LocalRepo::lookupTreeEntry(const Commit &c, const string &path)
     entry.hash = c.getTree();
 
     for (it = pv.begin(); it != pv.end(); it++) {
-	map<string, TreeEntry>::iterator e;
+        map<string, TreeEntry>::iterator e;
         Tree t = getTree(entry.hash);
-	e = t.tree.find(*it);
-	if (e == t.tree.end()) {
-	    entry = TreeEntry();
-	    entry.type = TreeEntry::Null;
-	    entry.hash = ObjectHash(); // Set empty hash
-	    return entry;
-	}
+        e = t.tree.find(*it);
+        if (e == t.tree.end()) {
+            entry = TreeEntry();
+            entry.type = TreeEntry::Null;
+            entry.hash = ObjectHash(); // Set empty hash
+            return entry;
+        }
         entry = (*e).second;
     }
 
@@ -1880,13 +1886,13 @@ class GraftDAGObject
 {
 public:
     GraftDAGObject()
-	: hash(), commit(), objEntry(), objs(),
-	  pFirst(), pSecond(), commitHash()
+        : hash(), commit(), objEntry(), objs(),
+          pFirst(), pSecond(), commitHash()
     {
     }
     GraftDAGObject(ObjectHash h, Commit c)
-	: hash(h), commit(c), objEntry(), objs(),
-	  pFirst(), pSecond(), commitHash()
+        : hash(h), commit(c), objEntry(), objs(),
+          pFirst(), pSecond(), commitHash()
     {
     }
     ~GraftDAGObject()
@@ -1894,103 +1900,209 @@ public:
     }
     bool setPath(const string &path, LocalRepo *srcRepo)
     {
-	objEntry = srcRepo->lookupTreeEntry(commit, path);
+        objEntry = srcRepo->lookupTreeEntry(commit, path);
+        DLOG("commit=%s, path=%s, objEntry=%s, msg=%s",
+             commit.hash().hex().c_str(), path.c_str(),
+             objEntry.hash.hex().c_str(), commit.getMessage().c_str());
+        if (objEntry.hash.isEmpty())
+        {
+            // Commit does not contain this path!
+            // XXX: Set type based on tip or don't commit
+            objEntry.hash = EMPTYFILE_HASH;
+            objs.insert(EMPTYFILE_HASH);
+            return true;
+        }
 
-	if (objEntry.hash.isEmpty())
-	{
-	    // Commit does not contain this path!
-	    // XXX: Set type based on tip or don't commit
-	    objEntry.hash = EMPTYFILE_HASH;
-	    objs.insert(EMPTYFILE_HASH);
-	    return true;
-	}
+        if (objEntry.isTree()) {
+            objs = srcRepo->getSubtreeObjects(objEntry.hash);
+        } else if (objEntry.type == TreeEntry::LargeBlob) {
+            NOT_IMPLEMENTED(false);
+            // XXX: Add fragments to objs list
+        } else {
+            objs.insert(objEntry.hash);
+        }
 
-	if (objEntry.isTree()) {
-	    objs = srcRepo->getSubtreeObjects(objEntry.hash);
-	} else if (objEntry.type == TreeEntry::LargeBlob) {
-	    NOT_IMPLEMENTED(false);
-	    // XXX: Add fragments to objs list
-	} else {
-	    objs.insert(objEntry.hash);
-	}
-
-	return true;
+        return true;
     }
     bool isEmpty() const
     {
-	return objEntry.hash.isEmpty();
+        return objEntry.hash.isEmpty();
     }
     const ObjectHash getHash() const
     {
-	return commitHash;
+        return commitHash;
     }
     void setParents(const ObjectHash &p1 = EMPTY_COMMIT,
-		    const ObjectHash &p2 = EMPTY_COMMIT)
+                    const ObjectHash &p2 = EMPTY_COMMIT)
     {
-	pFirst = p1;
-	pSecond = p2;
+        DLOG("setParents msg=%s, parents=%s, %s", commit.getMessage().c_str(), p1.hex().c_str(), p2.hex().c_str());
+        pFirst = p1;
+        pSecond = p2;
     }
     Commit graft(LocalRepo *srcRepo, LocalRepo *dstRepo,
-	             const string &srcPath, const string &dstPath)
+                 const string &srcPath, const string &dstPath)
     {
-	Commit tip;
-	Commit c = Commit();
-	ObjectHash treeHash;
-	Tree::Flat fdtree;
+        Commit tip;
+        Commit c = Commit();
+        ObjectHash treeHash;
+        Tree::Flat fdtree;
 
-	if (isEmpty()) {
-	    commitHash = ObjectHash();
-	    return c;
-	}
-
-	if (dstRepo->getHead().isEmpty()) {
-	    fdtree = Tree::Flat();
-	} else {
-	    tip = dstRepo->getCommit(dstRepo->getHead());
-	    Tree dtree = dstRepo->getTree(tip.getTree());
-	    fdtree = dtree.flattened(dstRepo);
-	}
-
-	if (objEntry.isTree()) {
-	    Tree stree = srcRepo->getTree(objEntry.hash);
-	    Tree::Flat fstree = stree.flattened(srcRepo);
-
-	    for (Tree::Flat::iterator it = fstree.begin();
-		 it != fstree.end();
-		 it++)
-	    {
-		fdtree[dstPath + (*it).first] = (*it).second;
-	    }
-	} else {
-	    // XXX: Ideally we should prevent this commit
-	    if (objEntry.type != TreeEntry::Null)
-		fdtree[dstPath] = objEntry;
-	}
-
-        for (set<ObjectHash>::iterator it = objs.begin();
-	     it != objs.end();
-	     it++)
-        {
-	    if (!dstRepo->hasObject(*it)) {
-		// XXX: Copy object without loading it all into memory!
-	        dstRepo->addBlob(srcRepo->getObjectType(*it),
-				 srcRepo->getPayload(*it));
-	    }
+        if (isEmpty()) {
+            commitHash = ObjectHash();
+            return c;
         }
 
-	Tree commitTree = Tree::unflatten(fdtree, dstRepo);
+        if (dstRepo->getHead().isEmpty()) {
+            fdtree = Tree::Flat();
+        } else {
+            tip = dstRepo->getCommit(dstRepo->getHead());
+            Tree dtree = dstRepo->getTree(tip.getTree());
+            fdtree = dtree.flattened(dstRepo);
+        }
 
-	c.setMessage(commit.getMessage());
-	c.setUser(commit.getUser());
-	c.setTime(commit.getTime());
-	c.setGraft(srcRepo->getRootPath(), srcPath, hash);
-	c.setParents(pFirst, pSecond);
-	c.setTree(commitTree.hash());
+        if (objEntry.isTree()) {
+            Tree stree = srcRepo->getTree(objEntry.hash);
+            Tree::Flat fstree = stree.flattened(srcRepo);
 
-	commitHash = dstRepo->addCommit(c);
+            for (Tree::Flat::iterator it = fstree.begin();
+                    it != fstree.end();
+                    it++)
+            {
+                fdtree[dstPath + (*it).first] = (*it).second;
+            }
+        } else {
+            // XXX: Ideally we should prevent this commit
+            if (objEntry.type != TreeEntry::Null)
+                fdtree[dstPath] = objEntry;
+        }
 
-	return c;
+        for (set<ObjectHash>::iterator it = objs.begin();
+                it != objs.end();
+                it++)
+        {
+            if (!dstRepo->hasObject(*it)) {
+                // XXX: Copy object without loading it all into memory!
+                dstRepo->addBlob(srcRepo->getObjectType(*it),
+                                 srcRepo->getPayload(*it));
+            }
+        }
+
+        Tree commitTree = Tree::unflatten(fdtree, dstRepo);
+
+        c.setMessage(commit.getMessage());
+        c.setUser(commit.getUser());
+        c.setTime(commit.getTime());
+        c.setGraft(srcRepo->getRootPath(), srcPath, hash);
+        c.setParents(pFirst, pSecond);
+        c.setTree(commitTree.hash());
+
+        commitHash = dstRepo->addCommit(c);
+
+        return c;
     }
+
+    Commit copy(LocalRepo *srcRepo,
+                LocalRepo *dstRepo,
+                const string &srcPath,
+                const string &srcBranch = "",
+                const string &dstPath = "",
+                const string &dstBranch = "",
+                const string &exportName = "",
+                const bool copyBlobs = false)
+    {
+        Commit tip;
+        Commit c = Commit();
+        ObjectHash treeHash;
+        Tree::Flat fdtree;
+
+        ASSERT(srcRepo != NULL);
+        ASSERT(dstRepo != NULL);
+        ASSERT(srcBranch != "");
+        ASSERT(dstBranch != "");
+
+        if (isEmpty())
+        {
+            commitHash = ObjectHash();
+            return c;
+        }
+
+        if (dstPath == "" || dstRepo->getHead(dstBranch).isEmpty())
+        {
+            fdtree = Tree::Flat();
+        }
+        else
+        {
+            tip = dstRepo->getCommit(dstRepo->getHead(dstBranch));
+            Tree dtree = dstRepo->getTree(tip.getTree());
+            fdtree = dtree.flattened(dstRepo);
+        }
+
+        if (objEntry.isTree())
+        {
+            Tree stree = srcRepo->getTree(objEntry.hash);
+            Tree::Flat fstree = stree.flattened(srcRepo);
+
+            for (Tree::Flat::iterator it = fstree.begin();
+                 it != fstree.end();
+                 it++)
+            {
+                string treeEntryPath = dstPath + (*it).first;
+                DLOG("fdtree['%s']=%s, %s",
+                     treeEntryPath.c_str(),
+                     (*it).second.hash.hex().c_str(),
+                     fdtree[treeEntryPath].hash.hex().c_str());
+                fdtree[treeEntryPath] = (*it).second;
+            }
+        }
+        else
+        {
+            // XXX: Ideally we should prevent this commit
+            DLOG("objEntry not a tree...");
+            if (objEntry.type != TreeEntry::Null)
+                fdtree["/"] = objEntry;
+        }
+
+        if (copyBlobs)
+        {
+            for (set<ObjectHash>::iterator it = objs.begin();
+                 it != objs.end();
+                 it++)
+            {
+                if (!dstRepo->hasObject(*it))
+                {
+                    // XXX: Copy object without loading it all into memory!
+                    dstRepo->addBlob(srcRepo->getObjectType(*it),
+                                     srcRepo->getPayload(*it));
+                }
+            }
+        }
+
+            for (Tree::Flat::iterator it = fdtree.begin();
+                 it != fdtree.end();
+                 it++)
+            {
+                DLOG("total dest tree['%s']=%s",
+                     (*it).first.c_str(),
+                     (*it).second.hash.hex().c_str());
+            }
+
+        Tree commitTree = Tree::unflatten(fdtree, dstRepo);
+        string commit_msg = commit.getMessage();
+        if (exportName != "")
+        {
+            commit_msg = exportName + ": " + commit_msg;
+        }
+        c.setMessage(commit_msg);
+        c.setUser(commit.getUser());
+        c.setTime(commit.getTime());
+        c.setGraft(srcRepo->getRootPath(), srcPath, hash);
+        c.setParents(pFirst, pSecond);
+        c.setTree(commitTree.hash());
+
+        commitHash = dstRepo->addCommit(c);
+        return c;
+    }
+
 private:
     // Source references
     ObjectHash hash;
@@ -2017,15 +2129,15 @@ public:
     }
     virtual GraftDAGObject map(ObjectHash k, Commit v)
     {
-	bool success;
-	GraftDAGObject r = GraftDAGObject(k, v);
+        bool success;
+        GraftDAGObject r = GraftDAGObject(k, v);
 
-	if (!k.isEmpty()) {
-	    success = r.setPath(srcPath, src);
-	    ASSERT(success == true);
-	}
+        if (!k.isEmpty()) {
+            success = r.setPath(srcPath, src);
+            ASSERT(success == true);
+        }
 
-	return r;
+        return r;
     }
 private:
     string srcPath;
@@ -2038,8 +2150,8 @@ private:
  */
 ObjectHash
 LocalRepo::graftSubtree(LocalRepo *r,
-                   const std::string &srcPath,
-                   const std::string &dstPath)
+                        const std::string &srcPath,
+                        const std::string &dstPath)
 {
     GraftMapper f = GraftMapper(this, r, srcPath);
     DAG<ObjectHash, Commit> cDag = r->getCommitDag();
@@ -2048,7 +2160,7 @@ LocalRepo::graftSubtree(LocalRepo *r,
     gDag.graphMap(f, cDag);
 
     if (gDag.getNode(r->getHead()).isEmpty()) {
-	return ObjectHash();
+        return ObjectHash();
     }
 
     // XXX: Prune graft nodes
@@ -2059,42 +2171,42 @@ LocalRepo::graftSubtree(LocalRepo *r,
     std::list<ObjectHash>::iterator it;
     for (it = bu.begin(); it != bu.end(); it++)
     {
-	cout << "Grafting " << (*it).hex() << endl;
+        cout << "Grafting " << (*it).hex() << endl;
 
-	// Compute and set parents
-	unordered_set<ObjectHash> parents = gDag.getParents(*it);
-	unordered_set<ObjectHash>::iterator p;
+        // Compute and set parents
+        unordered_set<ObjectHash> parents = gDag.getParents(*it);
+        unordered_set<ObjectHash>::iterator p;
 
-	p = parents.begin();
-	if (parents.size() == 0) {
-	    gDag.getNode(*it).setParents();
-	} else if (parents.size() == 1) {
-	    ObjectHash p1 = gDag.getNode(*p).getHash();
-	    if (p1.isEmpty())
-		p1 = getHead();
-	    gDag.getNode(*it).setParents(p1);
-	} else if (parents.size() == 2) {
-	    ObjectHash p1 = gDag.getNode(*p).getHash();
-	    if (p1.isEmpty())
-		p1 = getHead();
-	    p++;
-	    ObjectHash p2 = gDag.getNode(*p).getHash();
-	    if (p2.isEmpty())
-		p2 = getHead();
-	    gDag.getNode(*it).setParents(p1, p2);
-	} else {
-	    NOT_IMPLEMENTED(false);
-	}
+        p = parents.begin();
+        if (parents.size() == 0) {
+            gDag.getNode(*it).setParents();
+        } else if (parents.size() == 1) {
+            ObjectHash p1 = gDag.getNode(*p).getHash();
+            if (p1.isEmpty())
+                p1 = getHead();
+            gDag.getNode(*it).setParents(p1);
+        } else if (parents.size() == 2) {
+            ObjectHash p1 = gDag.getNode(*p).getHash();
+            if (p1.isEmpty())
+                p1 = getHead();
+            p++;
+            ObjectHash p2 = gDag.getNode(*p).getHash();
+            if (p2.isEmpty())
+                p2 = getHead();
+            gDag.getNode(*it).setParents(p1, p2);
+        } else {
+            NOT_IMPLEMENTED(false);
+        }
 
-	Commit c = gDag.getNode(*it).graft(r, this, srcPath, dstPath);
+        Commit c = gDag.getNode(*it).graft(r, this, srcPath, dstPath);
 
-	if (!gDag.getNode(*it).isEmpty())
-	{
-	    // Backrefs
-	    MdTransaction::sp tr(metadata.begin());
-	    addCommitBackrefs(c, tr);
-	    tr->setMeta(c.hash(), "status", "graft");
-	}
+        if (!gDag.getNode(*it).isEmpty())
+        {
+            // Backrefs
+            MdTransaction::sp tr(metadata.begin());
+            addCommitBackrefs(c, tr);
+            tr->setMeta(c.hash(), "status", "graft");
+        }
     }
 
     GraftDAGObject& gTip = gDag.getNode(tip);
@@ -2133,6 +2245,12 @@ LocalRepo::getBranch()
     return branch;
 }
 
+string
+LocalRepo::getBranchName()
+{
+    return getBranch().substr(1);
+}
+
 /*
  * Create or select the current branch.
  *
@@ -2142,18 +2260,38 @@ void
 LocalRepo::setBranch(const std::string &name)
 {
     // Verify branch name
+    DLOG("branch_name=%s",name.c_str());
     set<string> branches = listBranches();
     set<string>::iterator e = branches.find(name);
 
     if (e == branches.end()) {
-	string branchFile = rootPath + ORI_PATH_HEADS + name;
-	ObjectHash head = getHead();
-	LOG("Creating branch '%s'", name.c_str());
+        string branchFile = rootPath + ORI_PATH_HEADS + name;
+        ObjectHash head = getHead();
+        LOG("Creating branch '%s'", name.c_str());
 
-	OriFile_WriteFile(head.hex(), branchFile);
+        OriFile_WriteFile(head.hex(), branchFile);
     }
 
-    string ref = "@" + name;
+    string ref = "@"+name;
+    OriFile_WriteFile(ref.c_str(), ref.size(), rootPath + ORI_PATH_HEAD);
+}
+
+void
+LocalRepo::setBranch(const std::string &name, const ObjectHash &head)
+{
+    // Verify branch name
+    DLOG("branch_name=%s",name.c_str());
+    set<string> branches = listBranches();
+    set<string>::iterator e = branches.find(name);
+
+    if (e == branches.end()) {
+        string branchFile = rootPath + ORI_PATH_HEADS + name;
+        LOG("Creating branch '%s'", name.c_str());
+
+        OriFile_WriteFile(head.hex(), branchFile);
+    }
+
+    string ref = "@"+name;
     OriFile_WriteFile(ref.c_str(), ref.size(), rootPath + ORI_PATH_HEAD);
 }
 
@@ -2168,16 +2306,41 @@ LocalRepo::getHead()
     string commitId;
 
     if (branch[0] == '@') {
-	headPath = rootPath + ORI_PATH_HEADS + branch.substr(1);
+        headPath = rootPath + ORI_PATH_HEADS + branch.substr(1);
         try {
             commitId = OriFile_ReadFile(headPath);
         } catch (std::ios_base::failure &e) {
-	    return EMPTY_COMMIT;
+            return EMPTY_COMMIT;
         }
     } else if (branch[0] == '#') {
-	commitId = branch.substr(1);
+        commitId = branch.substr(1);
     } else {
-	NOT_IMPLEMENTED(false);
+        NOT_IMPLEMENTED(false);
+    }
+
+    return ObjectHash::fromHex(commitId);
+}
+
+ObjectHash
+LocalRepo::getHead(const string &branchName)
+{
+    string headPath;
+    string commitId;
+    string branch = branchName;
+    if (branch[0] != '@' && branch[0] != '#') {
+        branch = "@" + branch;
+    }
+    if (branch[0] == '@') {
+        headPath = rootPath + ORI_PATH_HEADS + branch.substr(1);
+        try {
+            commitId = OriFile_ReadFile(headPath);
+        } catch (std::ios_base::failure &e) {
+            return EMPTY_COMMIT;
+        }
+    } else if (branch[0] == '#') {
+        commitId = branch.substr(1);
+    } else {
+        NOT_IMPLEMENTED(false);
     }
 
     return ObjectHash::fromHex(commitId);
@@ -2195,19 +2358,19 @@ LocalRepo::updateHead(const ObjectHash &commitId)
     ASSERT(!commitId.isEmpty());
 
     if (branch[0] == '@') {
-	headPath = rootPath + ORI_PATH_HEADS + branch.substr(1);
-	OriFile_WriteFile(commitId.hex(), headPath);
+        headPath = rootPath + ORI_PATH_HEADS + branch.substr(1);
+        OriFile_WriteFile(commitId.hex(), headPath);
     } else if (branch[0] == '#') {
-	string ref = "#" + commitId.hex();
-	OriFile_WriteFile(ref.c_str(), ref.size(), rootPath + ORI_PATH_HEAD);
+        string ref = "#" + commitId.hex();
+        OriFile_WriteFile(ref.c_str(), ref.size(), rootPath + ORI_PATH_HEAD);
     } else {
-	NOT_IMPLEMENTED(false);
+        NOT_IMPLEMENTED(false);
     }
 }
 
 /*
- * Set working directory revision, this will set based on a commit's ObjectHash 
- * rather than updating the current head after a commit.  The command line 
+ * Set working directory revision, this will set based on a commit's ObjectHash
+ * rather than updating the current head after a commit.  The command line
  * checkout command should be the only way to call this.
  */
 void
@@ -2342,7 +2505,7 @@ LocalRepo::getTmpFile()
 {
     string tmpFile;
     char buf[10];
-    // Declare static as an optimization 
+    // Declare static as an optimization
     static int id = 1;
     struct stat fileStat;
 
@@ -2378,11 +2541,11 @@ LocalRepo::addPeer(const string &name, const string &path)
     map<string, Peer>::iterator it = peers.find(name);
 
     if (it == peers.end()) {
-	Peer p = Peer(rootPath + ORI_PATH_REMOTES + name);
-	p.setUrl(path);
-	peers[name] = p;
+        Peer p = Peer(rootPath + ORI_PATH_REMOTES + name);
+        p.setUrl(path);
+        peers[name] = p;
     } else {
-	(*it).second.setUrl(path);
+        (*it).second.setUrl(path);
     }
 
     return true;
@@ -2394,8 +2557,8 @@ LocalRepo::removePeer(const string &name)
     map<string, Peer>::iterator it = peers.find(name);
 
     if (it != peers.end()) {
-	peers.erase(it);
-	OriFile_Delete(rootPath + ORI_PATH_REMOTES + name);
+        peers.erase(it);
+        OriFile_Delete(rootPath + ORI_PATH_REMOTES + name);
     }
 
     return true;
@@ -2407,7 +2570,7 @@ LocalRepo::setInstaClone(const std::string &name, bool val)
     map<string, Peer>::iterator it = peers.find(name);
 
     if (it != peers.end()) {
-	(*it).second.setInstaClone(val);
+        (*it).second.setInstaClone(val);
     }
 }
 
@@ -2466,7 +2629,7 @@ LocalRepo::findRootPath(const string &path)
         root.assign(cwd);
         free(cwd);
     }
-
+    cout<<"ryan root="<<root<<endl;
     string uuidfile;
     struct stat dbstat;
 
@@ -2485,3 +2648,180 @@ LocalRepo::findRootPath(const string &path)
     return root;
 }
 
+ObjectHash LocalRepo::extractSubtree(const std::string &srcPath,
+                                     const std::string &exportName)
+{
+    DLOG("extracting subtree");
+    string dstPath, dBranch;
+    ObjectHash clonedCommits = copySubtree(this, srcPath, getBranchName(), dstPath="", dBranch="", exportName);
+    setBranch(exportName, clonedCommits);
+
+    return clonedCommits;
+}
+
+ObjectHash LocalRepo::importAsBranch(const std::string &srcFSName,
+                                     const std::string &branchName) // should NOT start with @ or #
+{
+    DLOG("import as branch: %s, %s",
+         srcFSName.c_str(),
+         branchName.c_str());
+
+    LocalRepo srcRepo;
+    string dstFullPath;
+    string currentRepoRoot = getRootPath();
+
+    string srcRepoRoot = currentRepoRoot.substr(0, currentRepoRoot.rfind("/")) + "/" + srcFSName + ".ori";
+    // string srcBranchName = "@" + branchName;
+
+    DLOG("rootPath=%s", srcRepoRoot.c_str());
+
+    srcRepo.open(srcRepoRoot);
+    string curBranch = getBranchName();
+
+
+    DLOG("src head=%s", srcRepo.getHead().hex().c_str());
+    string srcPath, dstPath, dBranch, exportName;
+    ObjectHash clonedCommits = copySubtree(&srcRepo, srcPath="/", branchName, dstPath="", dBranch="", exportName=branchName, true);
+    setBranch(branchName, clonedCommits);
+
+    setBranch(curBranch);
+
+    return clonedCommits;
+}
+
+ObjectHash LocalRepo::importFromBranch(const std::string &dstPath,
+                                     const std::string &branchName)
+{
+    string dstRelPath = dstPath;
+    if (dstRelPath[0]!='/') {
+        dstRelPath = "/"+dstRelPath;
+    }
+    DLOG("import from branch: %s, to: %s",
+         branchName.c_str(),
+         dstRelPath.c_str());
+
+    DLOG("src head=%s", getHead().hex().c_str());
+    string srcPath, sBranch, exportName;
+    ObjectHash clonedCommits = copySubtree(this, srcPath="/", sBranch=branchName, 
+                                            dstRelPath, getBranchName(), exportName="");
+
+    return clonedCommits;
+}
+
+ObjectHash LocalRepo::import(const std::string &srcFSName,
+                  const std::string &srcBranch, // exportName
+                  const std::string &dstRelPath,
+                  const std::string &dBranch)
+{
+        DLOG("import from fs=%s, srcBranch=%s, to=%s",
+            srcFSName.c_str(),
+            srcBranch.c_str(),
+            dstRelPath.c_str());
+
+        string dstBranch = (dBranch != "") ? dBranch : getBranchName();
+        ObjectHash clonedCommits = importAsBranch(srcFSName, srcBranch);
+        if (clonedCommits == EMPTY_COMMIT) {
+            return EMPTY_COMMIT;
+        }
+
+        clonedCommits = importFromBranch(dstRelPath, srcBranch);
+        updateHead(clonedCommits);
+        
+        return clonedCommits;
+}
+// is just graft but with branch info and more config options whoops
+// copy commit subtree from src repo into current repo without attaching it to current commit tree.
+// if dstPath == "", then copy subtree for empty branch, if there is a dstPath assume it's to copy into an existing commit tree
+// it will copy obj blobs related to the commits if those aren't found in the current repo
+// returns ObjHash of commit tree head.
+// used in extractSubtree and importAsBranch
+// meant to work between two local repos
+// dst repo is *this
+
+ObjectHash LocalRepo::copySubtree(LocalRepo *srcRepo,
+                                  const string &srcPath,
+                                  const string &sBranch,
+                                  const string &dstPath,
+                                  const string &dBranch,
+                                  const string &exportName,
+                                  const bool copyBlobs)
+{
+    DLOG("cp subtree");
+    GraftMapper f = GraftMapper(this, srcRepo, srcPath);
+    DAG<ObjectHash, Commit> cDag = srcRepo->getCommitDag();
+    DAG<ObjectHash, GraftDAGObject> gDag = DAG<ObjectHash, GraftDAGObject>();
+    bool appendToTree = (dstPath != "");
+    
+    string srcBranch = (sBranch!="")? sBranch: srcRepo->getBranchName();
+    string dstBranch = (dBranch!="")? dBranch: getBranchName();
+
+    gDag.graphMap(f, cDag);
+
+    if (gDag.getNode(srcRepo->getHead(srcBranch)).isEmpty())
+    {
+        return ObjectHash();
+    }
+
+    // XXX: Prune graft nodes
+
+    // extract individual changes
+    ObjectHash tip = srcRepo->getHead(srcBranch);
+    std::list<ObjectHash> bu = gDag.getBottomUp(tip);
+    std::list<ObjectHash>::iterator it;
+    for (it = bu.begin(); it != bu.end(); it++)
+    {
+        // Compute and set parents
+        unordered_set<ObjectHash> parents = gDag.getParents(*it);
+        unordered_set<ObjectHash>::iterator p;
+        GraftDAGObject &node = gDag.getNode(*it);
+
+        p = parents.begin();
+        if (parents.size() == 0)
+        {
+            node.setParents();
+        }
+        else if (parents.size() == 1)
+        {
+            ObjectHash p1 = gDag.getNode(*p).getHash();
+            if (appendToTree && p1.isEmpty()) {
+                p1 = getHead(dstBranch);
+            }
+            node.setParents(p1);
+        }
+        else if (parents.size() == 2)
+        {
+            ObjectHash p1 = gDag.getNode(*p).getHash();
+            if (appendToTree && p1.isEmpty()) {
+                p1 = getHead(dstBranch);
+            }
+            p++;
+            ObjectHash p2 = gDag.getNode(*p).getHash();
+            if (appendToTree && p2.isEmpty()) {
+                p2 = getHead(dstBranch);
+            }
+            node.setParents(p1, p2);
+        }
+        else
+        {
+            NOT_IMPLEMENTED(false);
+        }
+
+        Commit c = gDag.getNode(*it).copy(srcRepo, this, srcPath, srcBranch, dstPath, dstBranch, exportName, copyBlobs); // copy to empty tree
+        DLOG("Exporting hex=%s, msg=%s", (*it).hex().c_str(), c.getMessage().c_str());
+
+        if (!gDag.getNode(*it).isEmpty())
+        {
+            // Backrefs
+            MdTransaction::sp tr(metadata.begin());
+            addCommitBackrefs(c, tr);
+            tr->setMeta(c.hash(), "status", "graft");
+        }
+    }
+
+    this->sync();
+
+    GraftDAGObject& gTip = gDag.getNode(tip);
+    ObjectHash clonedCommits = gTip.getHash();
+
+    return clonedCommits;
+}

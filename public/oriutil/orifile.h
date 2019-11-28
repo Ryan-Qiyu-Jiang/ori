@@ -20,9 +20,11 @@
 #include <stdint.h>
 
 #include <string>
+#include <vector>
 
 bool OriFile_Exists(const std::string &path);
 bool OriFile_IsDirectory(const std::string &path);
+bool OriFile_LS(const std::string &path, std::vector<struct dirent*> &sub_file_entries);
 int OriFile_MkDir(const std::string &path);
 int OriFile_RmDir(const std::string &path);
 size_t OriFile_GetSize(const std::string &path);

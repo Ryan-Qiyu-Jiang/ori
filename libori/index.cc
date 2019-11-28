@@ -192,6 +192,7 @@ Index::dump()
 void
 Index::updateEntry(const ObjectHash &objId, const IndexEntry &entry)
 {
+    DLOG("updateEntry hash=%s" , objId.hex().c_str());
     ASSERT(!objId.isEmpty());
 
     _writeEntry(entry);
