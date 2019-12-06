@@ -46,14 +46,12 @@
 #include <oriutil/oricrypt.h>
 #include <oriutil/scan.h>
 #include <oriutil/zeroconf.h>
-// #include <oriutil/orifile.h>
 
 #include <ori/largeblob.h>
 #include <ori/localrepo.h>
 #include <ori/sshrepo.h>
 #include <ori/remoterepo.h>
 
-// #include "fuse_cmd.h"
 
 using namespace std;
 
@@ -492,7 +490,6 @@ int
 LocalRepo::addObject(ObjectType type, const ObjectHash &hash,
                      const std::string &payload)
 {
-    DLOG("addObject=%s",hash.hex().c_str());
     ASSERT(opened);
     ASSERT(!hash.isEmpty());
 
@@ -1935,7 +1932,6 @@ public:
     void setParents(const ObjectHash &p1 = EMPTY_COMMIT,
                     const ObjectHash &p2 = EMPTY_COMMIT)
     {
-        DLOG("setParents msg=%s, parents=%s, %s", commit.getMessage().c_str(), p1.hex().c_str(), p2.hex().c_str());
         pFirst = p1;
         pSecond = p2;
     }
@@ -2076,15 +2072,6 @@ public:
                 }
             }
         }
-
-            for (Tree::Flat::iterator it = fdtree.begin();
-                 it != fdtree.end();
-                 it++)
-            {
-                DLOG("total dest tree['%s']=%s",
-                     (*it).first.c_str(),
-                     (*it).second.hash.hex().c_str());
-            }
 
         Tree commitTree = Tree::unflatten(fdtree, dstRepo);
         string commit_msg = commit.getMessage();
@@ -2669,9 +2656,7 @@ ObjectHash LocalRepo::importAsBranch(const std::string &srcFSName,
     LocalRepo srcRepo;
     string dstFullPath;
     string currentRepoRoot = getRootPath();
-
     string srcRepoRoot = currentRepoRoot.substr(0, currentRepoRoot.rfind("/")) + "/" + srcFSName + ".ori";
-    // string srcBranchName = "@" + branchName;
 
     DLOG("rootPath=%s", srcRepoRoot.c_str());
 
@@ -2807,7 +2792,6 @@ ObjectHash LocalRepo::copySubtree(LocalRepo *srcRepo,
         }
 
         Commit c = gDag.getNode(*it).copy(srcRepo, this, srcPath, srcBranch, dstPath, dstBranch, exportName, copyBlobs); // copy to empty tree
-        DLOG("Exporting hex=%s, msg=%s", (*it).hex().c_str(), c.getMessage().c_str());
 
         if (!gDag.getNode(*it).isEmpty())
         {

@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/param.h>
 
 #include <string>
 #include <iostream>
@@ -29,7 +30,7 @@
 #include <oriutil/debug.h>
 #include <oriutil/orifile.h>
 #include <ori/localrepo.h>
-#include <dirent.h>
+#include <ori/repostore.h>
 
 #include "fuse_cmd.h"
 
@@ -50,7 +51,11 @@ usage_import(void)
 }
 
 int cmd_checkout(int argc, char * const argv[]);
-int just_in_case_snapshot(string exportName);
+int just_in_case_snapshot(const string &exportName);
+bool has_srcrepo(const string &srcName);
+bool has_branch_local(const string &branchName);
+bool has_branch_src(const string &srcFSName, const string &branchName);
+
 /*
  * Import a subtree with history.
  *
@@ -65,6 +70,7 @@ cmd_import(int argc, char * const argv[])
 {
     string dstDirPath, dstRelPath;
     string srcFSName, branchName;
+    LocalRepo srcRepo;
 
     if (argc != 4) {
         cout << "Error in correct number of arguments." << endl;
@@ -80,28 +86,40 @@ cmd_import(int argc, char * const argv[])
         cout << "Error: destination directory does not exist!" << endl;
         return 1;
     }
-    string srcRepoRootPath = OF_RepoPath(srcFSName); // .ori/fs_name.ori/
-    if (srcRepoRootPath == "") {
-        cout << "No src repository found..." << endl;
+
+    string repoFullPath = OF_ControlPath(); // find dir with control file from cwd
+    string controlFileName = ORI_CONTROL_FILENAME;
+    repoFullPath = repoFullPath.substr(0, repoFullPath.size()-controlFileName.size()-1);
+    if (repoFullPath == dstFullPath.substr(0, repoFullPath.length())) {
+        dstRelPath = dstFullPath.substr(repoFullPath.length());
+        cout <<"dstRelPath="<<dstRelPath<<endl;
+    } else {
+        cout<< "Can't find destination directory in this repo."<<endl;
         return 1;
     }
 
-    cout << "importing from " << srcFSName <<
+    if(!has_srcrepo(srcFSName)) {
+        cout << "Source repo not found." <<endl;
+        return 1;
+    }
+    if(!has_branch_src(srcFSName, branchName)) {
+        cout << "Source branch not found." <<endl;
+        return 1;
+    }
+    if(has_branch_local(branchName)) {
+        cout << "Branch already exists in this repo, try ori import branch instead?" <<endl;
+        return 1;
+    }
+
+    cout << "Importing from " << srcFSName <<
          " branch=" << branchName <<
          " to local dir=" << dstFullPath << endl;
 
-
-    dstRelPath = dstDirPath;
-    // check srcFSName is a real thing
-    // check branch is a real thing
-    // check branchName isn't taken
-
-    // make sure repo is snapshotted so import dir is found
     just_in_case_snapshot(branchName);
 
     ObjectHash importedBranch = repository.import(srcFSName, branchName, dstRelPath);
     if (importedBranch.isEmpty()) {
-        printf("Error: Could not find a file or directory with this name!");
+        printf("Error: Import failed!");
         return 1;
     }
 
@@ -110,7 +128,9 @@ cmd_import(int argc, char * const argv[])
     return cmd_checkout(1, checkout_argv);
 }
 
-int just_in_case_snapshot(string exportName) {
+// makes a snapshot if there are any unsaved changes
+// why: if import directory was added but not snapshotted it won't be found when grafting new commit tree
+int just_in_case_snapshot(const string &exportName) {
 
     strwstream req;
     req.writePStr("snapshot");
@@ -121,7 +141,54 @@ int just_in_case_snapshot(string exportName) {
 
     strstream resp = repository.callExt("FUSE", req.str());
     if (resp.ended()) {
-        cout << "status failed with an unknown error!" << endl;
+        cout << "Status failed with an unknown error!" << endl;
         return 1;
     }
+    return 0;
+}
+
+bool has_srcrepo(const string &srcFSName) {
+    set<string> repos = RepoStore_GetRepos();
+    return repos.count(srcFSName);
+}
+
+bool has_branch_local(const string &branchName) {
+    uint32_t len;
+    strwstream req;
+    string currentBranch;
+
+    req = strwstream();
+    req.writePStr("branch");
+    req.writePStr("list");
+    strstream resp = repository.callExt("FUSE", req.str());
+    if (resp.ended()) {
+        cout << "branches failed with an unknown error!" << endl;
+        return 0;
+    }
+
+    len = resp.readUInt32();
+    for (uint32_t i = 0; i < len; i++)
+    {
+        string branch;
+
+        resp.readLPStr(branch);
+        if (branchName == branch) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+bool has_branch_src(const string &srcFSName, const string &branchName) {
+    LocalRepo srcRepo;
+    string dstFullPath;
+    string currentRepoRoot = OF_RepoPath();
+    string srcRepoRoot = currentRepoRoot.substr(0, currentRepoRoot.rfind("/")) + "/" + srcFSName + ".ori";
+
+    DLOG("rootPath=%s", srcRepoRoot.c_str());
+
+    srcRepo.open(srcRepoRoot);
+    set<string> branches = srcRepo.listBranches();
+
+    return branches.count(branchName);
 }

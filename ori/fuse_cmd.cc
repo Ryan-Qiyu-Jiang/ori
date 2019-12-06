@@ -107,6 +107,7 @@ string OF_ControlPath(string path)
 {
     while (path.size() > 0) {
         string control_path = path + "/" + ORI_CONTROL_FILENAME;
+        printf("control_path=%s\n", control_path.c_str());
         if (OriFile_Exists(control_path)) {
             return control_path;
         }

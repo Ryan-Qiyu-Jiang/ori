@@ -323,7 +323,7 @@ void UDSSession::cmd_importAsBranch()
         return;
     }
 
-    DLOG("extract srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
+    DLOG("import as branch srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
 
     fsw.writeHash(repo->importAsBranch(srcFSName, branchName));
 }
@@ -346,7 +346,7 @@ void UDSSession::cmd_import()
         return;
     }
 
-    DLOG("extract srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
+    DLOG("import srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
 
     fsw.writeHash(repo->import(srcFSName, branchName, dstRelPath));
 }

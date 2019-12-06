@@ -45,6 +45,8 @@ usage_extract(void)
 }
 
 int cmd_checkout(int argc, char * const argv[]);
+bool has_branch_local(const string &branchName); // defined in cmd_import.cc
+int just_in_case_snapshot(const string &exportName);
 
 /*
  * Export a subtree into a new tree with a patched history.
@@ -54,7 +56,7 @@ int
 cmd_extract(int argc, char * const argv[])
 {
     string exportName;
-    string srcRoot, srcFullPath, srcRelPath;
+    string srcDirPath, srcRelPath;
     ObjectHash commitTreeClone;
 
     if (argc != 3) {
@@ -62,19 +64,34 @@ cmd_extract(int argc, char * const argv[])
         cout << "ori export <Dir Path> <Branch Name>" << endl;
         return 1;
     }
-    srcRelPath = argv[1];
+    srcDirPath = argv[1];
     exportName = argv[2];
-    srcFullPath = OriFile_RealPath(argv[1]);
+
+    string srcFullPath = OriFile_RealPath(srcDirPath);
     if (srcFullPath == "") {
         cout << "Error: Source directory does not exist!" << endl;
         return 1;
     }
 
-    srcRelPath = "/" + srcRelPath; // properly get rel path
-    // check that exportName is not already a branch
+    string repoFullPath = OF_ControlPath(); // find dir with control file from cwd
+    string controlFileName = ORI_CONTROL_FILENAME;
+    repoFullPath = repoFullPath.substr(0, repoFullPath.size()-controlFileName.size()-1);
+    if (repoFullPath == srcFullPath.substr(0, repoFullPath.length())) {
+        srcRelPath = srcFullPath.substr(repoFullPath.length());
+        cout <<"srcRelPath="<<srcRelPath<<", repoPath="<<repoFullPath<<", srcFull="<<srcFullPath<<endl;
+    } else {
+        cout<< "Can't find source directory in this repo."<<endl;
+        return 1;
+    }
 
-    cout<<"srcRelPath="<<srcRelPath<<endl;
-    cout << "Exporting from " << srcFullPath << " to branch " << exportName << endl;
+    // check that exportName is not already a branch
+    if(has_branch_local(exportName)) {
+        cout << "Branch already exists in this repo, delete branch first?" <<endl;
+        return 1;
+    }
+
+    cout << "Exporting from " << srcRelPath << " to branch " << exportName << endl;
+    just_in_case_snapshot(exportName);
 
     commitTreeClone = repository.extractSubtree(srcRelPath, exportName);
     cout << "commits Clone Hash="<<commitTreeClone.hex()<<endl;
