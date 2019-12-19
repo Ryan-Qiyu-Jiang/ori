@@ -158,8 +158,6 @@ cmd_replicate(int argc, char * const argv[])
         dstRepo.setInstaClone("origin", true);
     }
 
-    ObjectHash head = srcRepo->getHead();
-
     if (clone_mode != 2) {
         try {
             dstRepo.pull(srcRepo.get());
@@ -169,6 +167,7 @@ cmd_replicate(int argc, char * const argv[])
         }
     }
 
+    ObjectHash head = srcRepo->getHead();
     if (!head.isEmpty())
         dstRepo.updateHead(head);
 

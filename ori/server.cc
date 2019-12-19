@@ -161,6 +161,9 @@ SshServer::serve() {
         else if (command == "get fsid") {
             cmd_getFSID();
         }
+        else if (command == "get remote access") {
+            cmd_getRemoteAccess();
+        }
         else {
             printError("Unknown command");
         }
@@ -180,6 +183,15 @@ SshServer::cmd_hello()
     fdwstream fs(STDOUT_FILENO);
     fs.writeUInt8(OK);
     fs.writePStr(ORI_PROTO_VERSION);
+}
+
+void
+SshServer::cmd_getAccessRules()
+{
+    DLOG("accessRules");
+    fdwstream fs(STDOUT_FILENO);
+    fs.writeUInt8(OK);
+    fs.writeInt8(repo->getRemoteAccess());
 }
 
 void

@@ -80,6 +80,20 @@ ObjectHash SshRepo::getHead()
     return hash;
 }
 
+int 
+SshRepo::getRemoteAccess()
+{
+    client->sendCommand("get remote access");
+    int accessRules; // TODO: this should be more fine-grain than just all remoteAccess
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        accessRules = bs->readInt8();
+    }
+    return accessRules;
+}
+
 int
 SshRepo::distance()
 {
