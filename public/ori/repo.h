@@ -102,6 +102,9 @@ public:
             Object *other
             );
     virtual DAG<ObjectHash, Commit> getCommitDag();
+
+    // Access Controls TODO: actually have access controls and objs...
+    virtual int getRemoteAccess();
 };
 
 #endif /* __REPO_H__ */

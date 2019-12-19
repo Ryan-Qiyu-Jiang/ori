@@ -303,3 +303,8 @@ Repo::callExt(const string &ext, const string &data)
     NOT_IMPLEMENTED(false);
 }
 
+int
+Repo::getRemoteAccess()
+{
+    NOT_IMPLEMENTED(false);
+}

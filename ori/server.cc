@@ -112,12 +112,26 @@ SshServer::serve() {
     fsync(STDOUT_FILENO);
     fflush(stdout);
 
+    int remoteAccess = repo->getRemoteAccess();
+    DLOG("hello from ssh server. remote_access=%d",remoteAccess);
 
     while (true) {
         // Get command
         std::string command;
         if (fs.readPStr(command) == 0)
             break;
+
+        if (!remoteAccess &&
+                (command == "list objs" ||
+                 command == "list commits" ||
+                 command == "readobjs" ||
+                 command == "getobjinfo" ||
+                 command == "get head"
+                )) {
+            fflush(stdout);
+            fsync(STDOUT_FILENO);
+            continue;
+        }
 
         if (command == "hello") {
             cmd_hello();
@@ -204,7 +218,7 @@ SshServer::cmd_readObjs()
         objs.push_back(hash);
         DLOG("readObjs: %d of %d - %s", i + 1, numObjs, hash.hex().c_str());
     }
-    
+
     fdwstream fs(STDOUT_FILENO);
     fs.writeUInt8(OK);
     repo->transmit(&fs, objs);

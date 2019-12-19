@@ -56,6 +56,8 @@
 #define ORI_PATH_UDSSOCK "/uds"
 #define ORI_PATH_BACKUP_CONF "/backup.conf"
 #define ORI_PATH_TMP_GRAFT "graft/"
+#define ORI_PATH_ACCESS "/access/"
+#define ORI_PATH_ACCESS_GENERAL "/access/general"
 
 int LocalRepo_Init(const std::string &path, bool barerepo,
                    const std::string &uuid = "");
@@ -210,6 +212,11 @@ public:
     std::string getBranchName();
     void setBranch(const std::string &name);
     void setBranch(const std::string &name, const ObjectHash &head);
+
+    // Access Controls TODO: actually have access controls and objs...
+    int getRemoteAccess();
+    int setAccessControls(int remoteAccess);
+
     ObjectHash getHead();
     ObjectHash getHead(const std::string &branch);
     void updateHead(const ObjectHash &commitId);

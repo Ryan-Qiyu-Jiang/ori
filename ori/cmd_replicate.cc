@@ -63,11 +63,13 @@ cmd_replicate(int argc, char * const argv[])
     string srcRoot;
     string newRoot;
     bool bareRepo = true;
+    // string id_file_path="";
 
     struct option longopts[] = {
         { "full",       no_argument,    NULL,   'f' },
         { "shallow",    no_argument,    NULL,   's' },
         { "non-bare",   no_argument,    NULL,   'n' },
+        // { "identity_file",   required_argument,    NULL,   'i' },
         { NULL,         0,              NULL,   0   }
     };
 
@@ -90,6 +92,9 @@ cmd_replicate(int argc, char * const argv[])
                 }
                 clone_mode = 2;
                 break;
+            // case 'i':
+            //     id_file_path = optarg;
+            //     break;
             default:
                 printf("Usage: ori clone [OPTIONS] <REPO SOURCE> [<DIR>]\n");
                 return 1;
@@ -126,6 +131,9 @@ cmd_replicate(int argc, char * const argv[])
     printf("Cloning from %s to %s\n", srcRoot.c_str(), newRoot.c_str());
 
     RemoteRepo srcRepo;
+    // if(id_file_path != "") {
+    //     srcRoot = "-i " + id_file_path + " " + srcRoot;
+    // }
     srcRepo.connect(srcRoot);
 
     if (!OriFile_Exists(newRoot)) {

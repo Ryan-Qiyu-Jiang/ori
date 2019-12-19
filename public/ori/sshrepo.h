@@ -44,6 +44,7 @@ public:
     int addObject(ObjectType type, const ObjectHash &hash,
             const std::string &payload);
     std::vector<Commit> listCommits();
+    // int getRemoteAccess();
 
 private:
     SshClient *client;

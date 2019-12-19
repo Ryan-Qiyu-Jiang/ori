@@ -56,6 +56,7 @@ public:
             const std::string &payload);
 
     std::string dirpath;
+    // int getRemoteAccess();
 
 private:
     Index index;

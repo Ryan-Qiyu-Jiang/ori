@@ -69,6 +69,8 @@ LocalRepo_Init(const string &rootPath, bool bareRepo, const string &uuid)
     string objDir;
     string versionFile;
     string uuidFile;
+    string accessDir;
+
     int fd;
 
     // Create directory
@@ -86,6 +88,17 @@ LocalRepo_Init(const string &rootPath, bool bareRepo, const string &uuid)
         // Create README for bare repositories
         OriFile_WriteFile("DO NOT TOUCH ANY FILES!",
                           oriPath + "/README");
+    }
+
+    // Create tmp directory
+    accessDir = oriPath + "/access";
+    if (mkdir(accessDir.c_str(), ORI_DIR_MASK) < 0) {
+        perror("Could not create '.ori/access' directory");
+        return 1;
+    }
+    if (!OriFile_WriteFile("remote 1", 8, oriPath + ORI_PATH_ACCESS + "/general")) {
+        perror("Could not create '.ori/access/general' file");
+        return 1;
     }
 
     // Create tmp directory
@@ -2381,6 +2394,56 @@ LocalRepo::getHeadTree()
     }
 
     return t;
+}
+
+int 
+LocalRepo::getRemoteAccess()
+{
+    string generalFile;
+    int remoteAccess;
+
+    generalFile = rootPath + ORI_PATH_ACCESS_GENERAL;
+    try {
+        string tmp = OriFile_ReadFile(generalFile);
+        std::istringstream iss (tmp);
+        iss >> tmp; // "remote"
+        iss >> tmp; // 1 or 0
+        if (tmp.size()!= 1) {
+            throw;
+        }
+        remoteAccess = stoi(tmp);
+        if (remoteAccess != 0 && remoteAccess != 1) {
+            throw;
+        }
+    } catch (...) {
+        return -1;
+    }
+    return remoteAccess;
+}
+
+int 
+LocalRepo::setAccessControls(int remoteAccess)
+{
+    string generalAccess;
+
+    try {
+        if (remoteAccess != 0 && remoteAccess != 1) {
+            DLOG("bad remote access arg=%d",remoteAccess);
+            throw;
+        }
+
+        generalAccess = "remote ";
+        if (remoteAccess) {
+            generalAccess += "1";
+        } else {
+            generalAccess += "0";
+        }
+        OriFile_WriteFile(generalAccess.c_str(), generalAccess.size(),
+                             rootPath + ORI_PATH_ACCESS_GENERAL);
+    } catch (...) {
+        return 1;
+    }
+    return 0;
 }
 
 /*
