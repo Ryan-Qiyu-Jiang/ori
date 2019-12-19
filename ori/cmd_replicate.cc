@@ -161,7 +161,12 @@ cmd_replicate(int argc, char * const argv[])
     ObjectHash head = srcRepo->getHead();
 
     if (clone_mode != 2) {
-        dstRepo.pull(srcRepo.get());
+        try {
+            dstRepo.pull(srcRepo.get());
+        } catch (exception &e) {
+            cout << e.what() << endl;
+            cout << "Failed to copy repositiory contents." << endl;
+        }
     }
 
     if (!head.isEmpty())

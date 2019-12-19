@@ -925,6 +925,10 @@ LocalRepo::lookupSnapshot(const string &name)
 void
 LocalRepo::pull(Repo *r)
 {
+    int remoteAccess = r->getRemoteAccess();
+    if (!remoteAccess) {
+        throw std::runtime_error("No access to remote repo.");
+    }
     vector<Commit> remoteCommits = r->listCommits();
     deque<ObjectHash> toPull;
 
