@@ -114,7 +114,7 @@ SshServer::serve() {
     fsync(STDOUT_FILENO);
     fflush(stdout);
 
-    int remoteAccess = 1; // repo->getRemoteAccess();
+    int remoteAccess = repo->getRemoteAccess();
     DLOG("hello from ssh server. remote_access=%d",remoteAccess);
 
     while (true) {
