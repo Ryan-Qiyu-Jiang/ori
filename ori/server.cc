@@ -63,6 +63,7 @@ SshServer::open(const string &path)
         udsClient = new UDSClient(path);
         udsClient->connect();
         repo = new UDSRepo(udsClient);
+        DLOG("ssh -> udsrepo");
         return;
     } catch (SystemException e) {
         // XXX: fall through
@@ -91,6 +92,8 @@ SshServer::open(const string &path)
     }
 
     repo = lrepo;
+    DLOG("ssh -> local repo");
+
 }
 
 void
@@ -128,6 +131,7 @@ SshServer::serve() {
                  command == "getobjinfo" ||
                  command == "get head"
                 )) {
+            DLOG("invalid cmd, no access");
             fflush(stdout);
             fsync(STDOUT_FILENO);
             continue;
@@ -293,7 +297,8 @@ cmd_sshserver(int argc, char * const argv[])
     SshServer server;
     server.open(repoPath);
 
-    LOG("Starting SSH server");
+    cout<<"starting ssh server\b";
+    DLOG("Starting SSH server");
     server.serve();
     server.close();
 
