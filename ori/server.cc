@@ -64,7 +64,6 @@ SshServer::open(const string &path)
         udsClient->connect();
         repo = new UDSRepo(udsClient);
         DLOG("ssh -> udsrepo");
-        cout<<"udsrepo\n";
         return;
     } catch (SystemException e) {
         // XXX: fall through
@@ -94,7 +93,6 @@ SshServer::open(const string &path)
 
     repo = lrepo;
     DLOG("ssh -> local repo");
-    cout<<"local repo\n";
 }
 
 void
@@ -298,7 +296,6 @@ cmd_sshserver(int argc, char * const argv[])
     SshServer server;
     server.open(repoPath);
 
-    cout<<"starting ssh server\n";
     DLOG("Starting SSH server");
     server.serve();
     server.close();
