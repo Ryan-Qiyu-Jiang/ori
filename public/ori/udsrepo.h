@@ -60,7 +60,7 @@ public:
     virtual std::set<std::string> listExt();
     virtual std::string callExt(const std::string &ext,
                                 const std::string &data);
-    // int getRemoteAccess();
+    int getRemoteAccess();
     
 private:
     UDSClient *client;

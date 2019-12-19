@@ -62,6 +62,7 @@ public:
     void cmd_extractSubtree();
     void cmd_importAsBranch();
     void cmd_import();
+    void cmd_accessRules();
     void cmd_getFSID();
     void cmd_getHead();
     void cmd_getObjInfo();

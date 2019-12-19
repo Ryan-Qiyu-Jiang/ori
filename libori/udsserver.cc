@@ -279,11 +279,23 @@ UDSSession::serve() {
         else if (command == "import as branch") {
             cmd_importAsBranch();
         }
+        else if (command == "get remote access") {
+            cmd_accessRules();
+        }
         else {
             DLOG("hit unknown");
             printError("Unknown command");
         }
     }
+}
+
+void UDSSession::cmd_accessRules()
+{
+    DLOG("accessRules");
+    fdwstream fs(fd);
+
+    fs.writeUInt8(OK);
+    fs.writeInt8(repo->getRemoteAccess());
 }
 
 void UDSSession::cmd_extractSubtree()
