@@ -46,7 +46,6 @@ SshServer::~SshServer()
 
 #define OK 0
 #define ERROR 1
-#define UNAUTHORIZED 1
 
 void printError(const std::string &what)
 {
@@ -133,7 +132,8 @@ SshServer::serve() {
                 )) {
             DLOG("invalid cmd, no access");
             fdwstream tmp_fs(STDOUT_FILENO);
-            tmp_fs.writeUInt8(UNAUTHORIZED);
+            tmp_fs.writeUInt8(ERROR);
+            tmp_fs.writePStr("unauthorized");
 
             fflush(stdout);
             fsync(STDOUT_FILENO);
