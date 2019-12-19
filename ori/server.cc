@@ -162,7 +162,7 @@ SshServer::serve() {
             cmd_getFSID();
         }
         else if (command == "get remote access") {
-            cmd_getRemoteAccess();
+            cmd_getAccessRules();
         }
         else {
             printError("Unknown command");
