@@ -101,8 +101,8 @@ cmd_extract(int argc, char * const argv[])
     }
 
     // checkout new branch
-    char * const checkout_argv[] = {"checkout"};
-    return cmd_checkout(1, checkout_argv);
+    // char * const checkout_argv[] = {"checkout"};
+    // return cmd_checkout(1, checkout_argv);
 
     return 0;
 }

@@ -145,6 +145,8 @@ HTTPServer::entry(struct evhttp_request *req)
         contains(req);
     } else if (url == ORIHTTP_PATH_GETOBJS) {
         getObjs(req);
+    } else if (url == ORIHTTP_PATH_ACCESS) {
+        getAccessRules(req);
     } else if (OriStr_StartsWith(url, "/objs/")) {
         evhttp_send_error(req, HTTP_NOTFOUND, "File Not Found");
         return;
@@ -310,6 +312,26 @@ HTTPServer::getCommits(struct evhttp_request *req)
     evhttp_add_header(req->output_headers, "Content-Type",
             "application/octet-stream");
     evhttp_send_reply(req, HTTP_OK, "OK", es.buf());
+}
+
+void
+HTTPServer::getAccessRules(struct evhttp_request *req)
+{
+    int remoteAccess = repo.getRemoteAccess();
+    struct evbuffer *buf;
+
+    DLOG("httpd: getAccessRules");
+
+    buf = evbuffer_new();
+    if (buf == NULL) {
+        LOG("couldn't allocate evbuffer!");
+        evhttp_send_error(req, HTTP_INTERNAL, "Internal Error");
+        return;
+    }
+
+    evbuffer_add_printf(buf, "%d", remoteAccess);
+    evhttp_add_header(req->output_headers, "Content-Type", "text/plain");
+    evhttp_send_reply(req, HTTP_OK, "OK", buf);
 }
 
 void

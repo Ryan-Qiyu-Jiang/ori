@@ -161,14 +161,14 @@ static Cmd commands[] = {
         "Export a subtree from a repository as a new repository (NS)",
         cmd_export,
         usage_export,
-        CMD_DEBUG, /* 0 to allow aliasing of 'cp' */
+        CMD_DEBUG | CMD_NEED_FUSE, 
     },
     {
         "extract",
         "Export a subtree from a branch (NS)",
         cmd_extract,
         usage_extract,
-        CMD_DEBUG | CMD_NEED_FUSE, /* 0 to allow aliasing of 'cp' */
+        CMD_DEBUG | CMD_NEED_FUSE, 
     },
     {
         "filelog",

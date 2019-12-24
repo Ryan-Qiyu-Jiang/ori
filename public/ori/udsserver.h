@@ -60,6 +60,8 @@ public:
     void printError(const std::string &what);
     void cmd_callExt();
     void cmd_extractSubtree();
+    void cmd_export();
+    void cmd_exportInfo();
     void cmd_importAsBranch();
     void cmd_import();
     void cmd_accessRules();

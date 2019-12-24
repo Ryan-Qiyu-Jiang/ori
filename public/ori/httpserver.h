@@ -45,6 +45,8 @@ private:
     void contains(struct evhttp_request *req);
     void getObjs(struct evhttp_request *req);
     void getObjInfo(struct evhttp_request *req);
+    void getAccessRules(struct evhttp_request *req);
+
     LocalRepo &repo;
     uint16_t port;
     struct evhttp *httpd;

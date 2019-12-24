@@ -26,6 +26,7 @@
 #define ORIHTTP_PATH_CONTAINS   "/contains"
 #define ORIHTTP_PATH_GETOBJS    "/getobjs"
 #define ORIHTTP_PATH_OBJINFO    "/objinfo/"
+#define ORIHTTP_PATH_ACCESS    "/access/"
 
 #endif /* __HTTPDEFS_H__ */
 

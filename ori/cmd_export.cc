@@ -15,20 +15,22 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include <string>
 #include <iostream>
 #include <iomanip>
 
-#include <oriutil/debug.h>
+#include <ori/udsclient.h>
+#include <ori/udsrepo.h>
+#include <oriutil/runtimeexception.h>
 #include <oriutil/orifile.h>
-#include <ori/localrepo.h>
 
 #include "fuse_cmd.h"
 
 using namespace std;
 
-extern LocalRepo repository;
+extern UDSRepo repository;
 
 /*
  * Export help
@@ -45,23 +47,59 @@ usage_export(void)
 /*
  * Export a subtree into a new tree with a patched history.
  *
- * It just does extract rn
+ * It does extract and register export
  */
 
-int cmd_extract(int argc, char * const argv[]);
+bool has_branch_local(const string &branchName); // defined in cmd_import.cc
+int just_in_case_snapshot(const string &exportName);
 
 int
 cmd_export(int argc, char * const argv[])
 {
-    string dest_fs_name;
-    string srcRoot, dstRoot, srcRelPath;
-    string tmpDirPath;
+    string exportName;
+    string srcDirPath, srcRelPath;
+    ObjectHash commitTreeClone;
 
     if (argc != 3) {
         cout << "Error in correct number of arguments." << endl;
-        cout << "ori export <Dir Path> <New Ori FS Name>" << endl;
+        cout << "ori export <Dir Path> <Branch Name>" << endl;
+        return 1;
+    }
+    srcDirPath = argv[1];
+    exportName = argv[2];
+
+    string srcFullPath = OriFile_RealPath(srcDirPath);
+    if (srcFullPath == "") {
+        cout << "Error: Source directory does not exist!" << endl;
         return 1;
     }
 
-    return cmd_extract(argc, argv);
+    string repoFullPath = OF_ControlPath(); // find dir with control file from cwd
+    string controlFileName = ORI_CONTROL_FILENAME;
+    repoFullPath = repoFullPath.substr(0, repoFullPath.size()-controlFileName.size()-1);
+    if (repoFullPath == srcFullPath.substr(0, repoFullPath.length())) {
+        srcRelPath = srcFullPath.substr(repoFullPath.length());
+        cout <<"srcRelPath="<<srcRelPath<<", repoPath="<<repoFullPath<<", srcFull="<<srcFullPath<<endl;
+    } else {
+        cout<< "Can't find source directory in this repo."<<endl;
+        return 1;
+    }
+
+    // check that exportName is not already a branch
+    if(has_branch_local(exportName)) {
+        cout << "Branch already exists in this repo, delete branch first?" <<endl;
+        return 1;
+    }
+
+    cout << "Exporting from " << srcRelPath << " to branch " << exportName << endl;
+    just_in_case_snapshot(exportName);
+
+    commitTreeClone = repository.exportSubtree(srcRelPath, exportName);
+    cout << "commits Clone Hash="<<commitTreeClone.hex()<<endl;
+    if (commitTreeClone.isEmpty()) {
+        printf("Error: Could not find a file or directory with this name!");
+        return 1;
+    }
+
+    return 0;
 }

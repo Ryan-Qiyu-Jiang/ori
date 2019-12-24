@@ -99,7 +99,7 @@ HttpRepo::distance()
     assert(uuid != "");
 
     sw.stop();
-    
+
     return sw.getElapsedMS();
 }
 
@@ -128,16 +128,16 @@ HttpRepo::getObject(const ObjectHash &id)
         ASSERT(num == 0);
 
         switch (info.getAlgo()) {
-            case ObjectInfo::ZIPALGO_NONE:
-                payloads[info.hash] = payload;
-                break;
-            case ObjectInfo::ZIPALGO_FASTLZ:
-                payloads[info.hash] = zipstream(new strstream(payload),
-                                                DECOMPRESS,
-                                                info.payload_size).readAll();
-            case ObjectInfo::ZIPALGO_LZMA:
-            case ObjectInfo::ZIPALGO_UNKNOWN:
-                NOT_IMPLEMENTED(false);
+        case ObjectInfo::ZIPALGO_NONE:
+            payloads[info.hash] = payload;
+            break;
+        case ObjectInfo::ZIPALGO_FASTLZ:
+            payloads[info.hash] = zipstream(new strstream(payload),
+                                            DECOMPRESS,
+                                            info.payload_size).readAll();
+        case ObjectInfo::ZIPALGO_LZMA:
+        case ObjectInfo::ZIPALGO_UNKNOWN:
+            NOT_IMPLEMENTED(false);
         }
         return Object::sp(new HttpObject(this, info));
     }
@@ -158,6 +158,24 @@ HttpRepo::getObjectInfo(const ObjectHash &id)
     rval.fromString(payload);
 
     return rval;
+}
+
+int
+HttpRepo::getRemoteAccess()
+{
+    int status;
+    string remoteAccess;
+
+    status = client->getRequest(ORIHTTP_PATH_ACCESS, remoteAccess);
+    if (status < 0) {
+        ASSERT(false);
+        return 0;
+    }
+
+    if (remoteAccess=="1") {
+        return 1;
+    }
+    return 0;
 }
 
 bool
@@ -251,7 +269,7 @@ HttpRepo::listObjects()
 
 int
 HttpRepo::addObject(ObjectType type, const ObjectHash &hash,
-            const std::string &payload)
+                    const std::string &payload)
 {
     NOT_IMPLEMENTED(false);
     return -1;

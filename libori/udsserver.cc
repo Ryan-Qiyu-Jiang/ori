@@ -273,6 +273,12 @@ UDSSession::serve() {
         else if (command == "extract") {
             cmd_extractSubtree();
         }
+        else if (command == "export") {
+            cmd_export();
+        }
+        else if (command == "export info") {
+            cmd_exportInfo();
+        }
         else if (command == "import") {
             cmd_import();
         }
@@ -318,6 +324,64 @@ void UDSSession::cmd_extractSubtree()
     fsw.writeHash(repo->extractSubtree(srcPath, exportName));
 }
 
+void UDSSession::cmd_export()
+{
+    DLOG("export");
+    fdwstream fsw(fd);
+    fdstream in(fd, -1);
+
+    fsw.writeUInt8(OK);
+
+    string srcPath, exportName;
+
+    if (in.readPStr(srcPath) == 0 || in.readPStr(exportName) == 0) {
+        fsw.writeHash(EMPTY_COMMIT); // x0
+        return;
+    }
+
+    DLOG("extract srcPath=%s, exportName=%s", srcPath.c_str(), exportName.c_str());
+
+    fsw.writeHash(repo->exportSubtree(srcPath, exportName));
+}
+
+// gets info about registered exports
+void UDSSession::cmd_exportInfo()
+{
+    DLOG("exportInfo");
+    fdwstream fsw(fd);
+    fdstream in(fd, -1);
+
+    string cmd, exportName;
+
+    if (in.readPStr(cmd) == 0 || (cmd != "get" && cmd != "list")) {
+        fsw.writeUInt8(ERROR);
+        fsw.writePStr("Expected get/list after 'export info'.");
+        return;
+    }
+
+    if (cmd == "get") {
+        if (in.readPStr(exportName) == 0) {
+            fsw.writeUInt8(ERROR);
+            fsw.writePStr("Expected export name after 'export info get'.");
+            return;
+        }
+        fsw.writeUInt8(OK);
+        int e = repo->getExport(exportName);
+        DLOG("uds server get export? %d", e);
+        fsw.writeUInt8(e);
+
+    } else {
+        fsw.writeUInt8(OK);
+        const std::set<std::string> &exports = repo->listExports();
+        fsw.writeUInt32(exports.size());
+
+        set<string>::iterator e;
+        for (e = exports.begin(); e != exports.end(); e++) {
+            fsw.writePStr(*e);
+        }
+    }
+}
+
 void UDSSession::cmd_importAsBranch()
 {
     DLOG("import as branch");
@@ -346,21 +410,26 @@ void UDSSession::cmd_import()
     fdwstream fsw(fd);
     fdstream in(fd, -1);
 
-    fsw.writeUInt8(OK);
-
     string srcFSName, branchName, dstRelPath;
 
     if (in.readPStr(srcFSName) == 0 ||
         in.readPStr(branchName) == 0 ||
         in.readPStr(dstRelPath) == 0)
     {
-        fsw.writeHash(EMPTY_COMMIT); // x0
+        fsw.writeUInt8(ERROR);
+        fsw.writePStr("Expected srcFSName, branchName, and dstRelPath.");
         return;
     }
 
     DLOG("import srcFSName=%s, branchName=%s", srcFSName.c_str(), branchName.c_str());
 
-    fsw.writeHash(repo->import(srcFSName, branchName, dstRelPath));
+    ObjectHash clonedCommits = repo->import(srcFSName, branchName, dstRelPath);
+    if (clonedCommits == EMPTY_COMMIT) {
+        fsw.writeUInt8(ERROR);
+        fsw.writePStr("Import failed. Did the source fs export this branch?");
+    }
+    fsw.writeUInt8(OK);
+    fsw.writeHash(clonedCommits);
 }
 
 void UDSSession::cmd_hello()

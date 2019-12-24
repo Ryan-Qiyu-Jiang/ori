@@ -58,6 +58,7 @@
 #define ORI_PATH_TMP_GRAFT "graft/"
 #define ORI_PATH_ACCESS "/access/"
 #define ORI_PATH_ACCESS_GENERAL "/access/general"
+#define ORI_PATH_EXPORTS "/exports/"
 
 int LocalRepo_Init(const std::string &path, bool barerepo,
                    const std::string &uuid = "");
@@ -188,8 +189,15 @@ public:
     ObjectHash graftSubtree(LocalRepo *r,
                             const std::string &srcPath,
                             const std::string &dstPath);
+    // Graft refactored Operations
+    ObjectHash exportSubtree(const std::string &srcPath,
+                              const std::string &exportName);
     ObjectHash extractSubtree(const std::string &srcPath,
                               const std::string &exportName);
+    int registerExport(const std::string &exportName);
+    std::set<std::string> listExports();
+    int getExport(const std::string &name);
+    // Graft with more options
     ObjectHash copySubtree(LocalRepo *srcRepo,
                                   const std::string &srcPath,
                                   const std::string &srcBranch = "",

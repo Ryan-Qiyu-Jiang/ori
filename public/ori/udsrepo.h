@@ -36,7 +36,12 @@ public:
     std::string getUUID();
     std::string getVersion();
     ObjectHash getHead();
+    
+    std::set<std::string> listExports();
+    int getExport(const std::string &name);
+    ObjectHash exportSubtree(std::string srcPath, std::string exportName);
     ObjectHash extractSubtree(std::string srcPath, std::string exportName);
+    
     ObjectHash importAsBranch(const std::string &srcFSName,
                               const std::string &branchName);
     ObjectHash import(const std::string &srcFSName,

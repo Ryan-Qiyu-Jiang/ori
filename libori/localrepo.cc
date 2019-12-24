@@ -70,7 +70,7 @@ LocalRepo_Init(const string &rootPath, bool bareRepo, const string &uuid)
     string versionFile;
     string uuidFile;
     string accessDir;
-
+    string exportsDir;
     int fd;
 
     // Create directory
@@ -90,14 +90,21 @@ LocalRepo_Init(const string &rootPath, bool bareRepo, const string &uuid)
                           oriPath + "/README");
     }
 
-    // Create tmp directory
+    // Create access control directory
     accessDir = oriPath + "/access";
     if (mkdir(accessDir.c_str(), ORI_DIR_MASK) < 0) {
         perror("Could not create '.ori/access' directory");
         return 1;
     }
-    if (!OriFile_WriteFile("remote 1", 8, oriPath + ORI_PATH_ACCESS + "/general")) {
+
+    if (!OriFile_WriteFile("remote 1", 8, oriPath + ORI_PATH_ACCESS + "general")) {
         perror("Could not create '.ori/access/general' file");
+        return 1;
+    }
+
+    exportsDir = oriPath + "/exports";
+    if (mkdir(exportsDir.c_str(), ORI_DIR_MASK) < 0) {
+        perror("Could not create '.ori/exports' directory");
         return 1;
     }
 
@@ -2056,8 +2063,8 @@ public:
             Tree::Flat fstree = stree.flattened(srcRepo);
 
             for (Tree::Flat::iterator it = fstree.begin();
-                 it != fstree.end();
-                 it++)
+                    it != fstree.end();
+                    it++)
             {
                 string treeEntryPath = dstPath + (*it).first;
                 DLOG("fdtree['%s']=%s, %s",
@@ -2078,8 +2085,8 @@ public:
         if (copyBlobs)
         {
             for (set<ObjectHash>::iterator it = objs.begin();
-                 it != objs.end();
-                 it++)
+                    it != objs.end();
+                    it++)
             {
                 if (!dstRepo->hasObject(*it))
                 {
@@ -2400,7 +2407,7 @@ LocalRepo::getHeadTree()
     return t;
 }
 
-int 
+int
 LocalRepo::getRemoteAccess()
 {
     string generalFile;
@@ -2425,7 +2432,7 @@ LocalRepo::getRemoteAccess()
     return remoteAccess;
 }
 
-int 
+int
 LocalRepo::setAccessControls(int remoteAccess)
 {
     string generalAccess;
@@ -2443,7 +2450,7 @@ LocalRepo::setAccessControls(int remoteAccess)
             generalAccess += "0";
         }
         OriFile_WriteFile(generalAccess.c_str(), generalAccess.size(),
-                             rootPath + ORI_PATH_ACCESS_GENERAL);
+                          rootPath + ORI_PATH_ACCESS_GENERAL);
     } catch (...) {
         return 1;
     }
@@ -2683,7 +2690,7 @@ LocalRepo::findRootPath(const string &path)
         root.assign(cwd);
         free(cwd);
     }
-    cout<<"ryan root="<<root<<endl;
+    cout<<"ryan root" <<root<<endl;
     string uuidfile;
     struct stat dbstat;
 
@@ -2702,15 +2709,56 @@ LocalRepo::findRootPath(const string &path)
     return root;
 }
 
+ObjectHash LocalRepo::exportSubtree(const std::string &srcPath,
+                                     const std::string &exportName)
+{
+    DLOG("export");
+    ObjectHash clonedCommits = extractSubtree(srcPath, exportName);
+    registerExport(exportName);
+    return clonedCommits;
+}
+
 ObjectHash LocalRepo::extractSubtree(const std::string &srcPath,
                                      const std::string &exportName)
 {
     DLOG("extracting subtree");
     string dstPath, dBranch;
     ObjectHash clonedCommits = copySubtree(this, srcPath, getBranchName(), dstPath="", dBranch="", exportName);
-    setBranch(exportName, clonedCommits);
+
+    DLOG("Creating branch '%s'", exportName.c_str());
+    string branchFile = rootPath + ORI_PATH_HEADS + exportName;
+    OriFile_WriteFile(clonedCommits.hex(), branchFile);
 
     return clonedCommits;
+}
+
+// TODO: support more complex access control than just yes/no to exports
+int LocalRepo::registerExport(const std::string &exportName) {
+    string exportFile = rootPath + ORI_PATH_EXPORTS + exportName;
+    DLOG("Registering export '%s'", exportName.c_str());
+    return OriFile_WriteFile("", exportFile);
+}
+
+set<string>
+LocalRepo::listExports()
+{
+    string path = rootPath + ORI_PATH_EXPORTS;
+    set<string> rval;
+
+    DirIterate(path.c_str(), &rval, listBranchesHelper);
+
+    return rval;
+}
+
+int
+LocalRepo::getExport(const std::string &name) {
+    set<string> exports = listExports();
+    set<string>::iterator e = exports.find(name);
+    if (e == exports.end()) {
+        return 0;
+    }
+    DLOG("Foudn registered export '%s'", name.c_str());
+    return 1;
 }
 
 ObjectHash LocalRepo::importAsBranch(const std::string &srcFSName,
@@ -2728,21 +2776,26 @@ ObjectHash LocalRepo::importAsBranch(const std::string &srcFSName,
     DLOG("rootPath=%s", srcRepoRoot.c_str());
 
     srcRepo.open(srcRepoRoot);
-    string curBranch = getBranchName();
 
+    // check that branchName is a registered export of srcFS and not just some branch
+    int isRegistered = srcRepo.getExport(branchName);
+    if (!isRegistered) {
+        return EMPTY_COMMIT;
+    }
 
     DLOG("src head=%s", srcRepo.getHead().hex().c_str());
     string srcPath, dstPath, dBranch, exportName;
     ObjectHash clonedCommits = copySubtree(&srcRepo, srcPath="/", branchName, dstPath="", dBranch="", exportName=branchName, true);
-    setBranch(branchName, clonedCommits);
 
-    setBranch(curBranch);
+    DLOG("Creating branch '%s'", branchName.c_str());
+    string branchFile = rootPath + ORI_PATH_HEADS + branchName;
+    OriFile_WriteFile(clonedCommits.hex(), branchFile);
 
     return clonedCommits;
 }
 
 ObjectHash LocalRepo::importFromBranch(const std::string &dstPath,
-                                     const std::string &branchName)
+                                       const std::string &branchName)
 {
     string dstRelPath = dstPath;
     if (dstRelPath[0]!='/') {
@@ -2754,32 +2807,32 @@ ObjectHash LocalRepo::importFromBranch(const std::string &dstPath,
 
     DLOG("src head=%s", getHead().hex().c_str());
     string srcPath, sBranch, exportName;
-    ObjectHash clonedCommits = copySubtree(this, srcPath="/", sBranch=branchName, 
-                                            dstRelPath, getBranchName(), exportName="");
+    ObjectHash clonedCommits = copySubtree(this, srcPath="/", sBranch=branchName,
+                                           dstRelPath, getBranchName(), exportName="");
 
     return clonedCommits;
 }
 
 ObjectHash LocalRepo::import(const std::string &srcFSName,
-                  const std::string &srcBranch, // exportName
-                  const std::string &dstRelPath,
-                  const std::string &dBranch)
+                             const std::string &srcBranch, // exportName
+                             const std::string &dstRelPath,
+                             const std::string &dBranch)
 {
-        DLOG("import from fs=%s, srcBranch=%s, to=%s",
-            srcFSName.c_str(),
-            srcBranch.c_str(),
-            dstRelPath.c_str());
+    DLOG("import from fs=%s, srcBranch=%s, to=%s",
+         srcFSName.c_str(),
+         srcBranch.c_str(),
+         dstRelPath.c_str());
 
-        string dstBranch = (dBranch != "") ? dBranch : getBranchName();
-        ObjectHash clonedCommits = importAsBranch(srcFSName, srcBranch);
-        if (clonedCommits == EMPTY_COMMIT) {
-            return EMPTY_COMMIT;
-        }
+    string dstBranch = (dBranch != "") ? dBranch : getBranchName();
+    ObjectHash clonedCommits = importAsBranch(srcFSName, srcBranch);
+    if (clonedCommits == EMPTY_COMMIT) {
+        return EMPTY_COMMIT;
+    }
 
-        clonedCommits = importFromBranch(dstRelPath, srcBranch);
-        updateHead(clonedCommits);
-        
-        return clonedCommits;
+    clonedCommits = importFromBranch(dstRelPath, srcBranch);
+    updateHead(clonedCommits);
+
+    return clonedCommits;
 }
 // is just graft but with branch info and more config options whoops
 // copy commit subtree from src repo into current repo without attaching it to current commit tree.
@@ -2803,7 +2856,7 @@ ObjectHash LocalRepo::copySubtree(LocalRepo *srcRepo,
     DAG<ObjectHash, Commit> cDag = srcRepo->getCommitDag();
     DAG<ObjectHash, GraftDAGObject> gDag = DAG<ObjectHash, GraftDAGObject>();
     bool appendToTree = (dstPath != "");
-    
+
     string srcBranch = (sBranch!="")? sBranch: srcRepo->getBranchName();
     string dstBranch = (dBranch!="")? dBranch: getBranchName();
 

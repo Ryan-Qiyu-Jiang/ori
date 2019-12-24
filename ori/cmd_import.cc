@@ -54,6 +54,7 @@ int cmd_checkout(int argc, char * const argv[]);
 int just_in_case_snapshot(const string &exportName);
 bool has_srcrepo(const string &srcName);
 bool has_branch_local(const string &branchName);
+bool is_registered_export(const string &srcFSName, const string &exportName);
 bool has_branch_src(const string &srcFSName, const string &branchName);
 
 /*
@@ -104,6 +105,10 @@ cmd_import(int argc, char * const argv[])
     }
     if(!has_branch_src(srcFSName, branchName)) {
         cout << "Source branch not found." <<endl;
+        return 1;
+    }
+    if(!is_registered_export(srcFSName, branchName)) {
+        cout << branchName << " is not a registered export of the source FS." <<endl;
         return 1;
     }
     if(has_branch_local(branchName)) {
@@ -191,4 +196,17 @@ bool has_branch_src(const string &srcFSName, const string &branchName) {
     set<string> branches = srcRepo.listBranches();
 
     return branches.count(branchName);
+}
+
+bool is_registered_export(const string &srcFSName, const string &exportName) {
+    LocalRepo srcRepo;
+    string dstFullPath;
+    string currentRepoRoot = OF_RepoPath();
+    string srcRepoRoot = currentRepoRoot.substr(0, currentRepoRoot.rfind("/")) + "/" + srcFSName + ".ori";
+
+    DLOG("rootPath=%s", srcRepoRoot.c_str());
+
+    srcRepo.open(srcRepoRoot);
+
+    return srcRepo.getExport(exportName);
 }

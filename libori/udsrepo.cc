@@ -115,6 +115,69 @@ ObjectHash UDSRepo::extractSubtree(string srcPath, string exportName)
     return hash;
 }
 
+ObjectHash UDSRepo::exportSubtree(string srcPath, string exportName)
+{
+    client->sendCommand("export");
+
+    strwstream ss;
+    ss.writePStr(srcPath);
+    ss.writePStr(exportName);
+
+    client->sendData(ss.str());
+
+    ObjectHash hash;
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        bs->readHash(hash);
+    }
+    return hash;
+}
+
+int UDSRepo::getExport(const std::string &name)
+{
+    client->sendCommand("export info");
+
+    strwstream ss;
+    ss.writePStr("get");
+    ss.writePStr(name);
+    client->sendData(ss.str());
+
+    int hasExport;
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        hasExport = bs->readUInt8();
+    }
+    return hasExport;
+}
+
+std::set<std::string> UDSRepo::listExports()
+{
+    client->sendCommand("export info");
+
+    strwstream ss;
+    ss.writePStr("list");
+    client->sendData(ss.str());
+
+    std::set<std::string> exports;
+
+    bool ok = client->respIsOK();
+    bytestream::ap bs(client->getStream());
+    if (ok) {
+        uint32_t num = bs->readUInt32();
+        for (size_t i = 0; i < num; i++) {
+            std::string exportName;
+            bs->readPStr(exportName);
+            exports.insert(exportName);
+        }
+    }
+
+    return exports;
+}
+
 ObjectHash UDSRepo::importAsBranch(const std::string &srcFSName,
                                    const std::string &branchName)
 {
@@ -150,14 +213,14 @@ ObjectHash UDSRepo::import(const std::string &srcFSName,
     ss.writePStr(dstRelPath);
     client->sendData(ss.str());
 
-    ObjectHash hash;
+    ObjectHash hash = EMPTY_COMMIT;
 
     bool ok = client->respIsOK();
     bytestream::ap bs(client->getStream());
     if (ok) {
         bs->readHash(hash);
     } else {
-        cout <<"resp is not ok!!!! :(\n";
+        cout <<"Import failed.\n";
     }
 
     return hash;

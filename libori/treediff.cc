@@ -558,6 +558,7 @@ TreeDiff::mergeTrees(const TreeDiff &d1, const TreeDiff &d2)
                     newEntry.hashBase = e->hashBase;
                     newEntry.attrsA = e->newAttrs;
                     newEntry.attrsB = e_second->newAttrs;
+                    newEntry.attrsBase = (e->attrsBase.attrs.empty() ? e->newAttrs : e->attrsBase);
 
                     ASSERT(e->hashBase == e_second->hashBase);
 
@@ -619,7 +620,7 @@ TreeDiff::mergeTrees(const TreeDiff &d1, const TreeDiff &d2)
                 newEntry.hashBase = e->hashBase;
                 newEntry.attrsA = e->newAttrs;
                 newEntry.attrsB = e_second->newAttrs;
-                newEntry.attrsBase = e->attrsBase;
+                newEntry.attrsBase = (e->attrsBase.attrs.empty() ? e->newAttrs : e->attrsBase);
 
                 assert(e->hashBase == e_second->hashBase);
 

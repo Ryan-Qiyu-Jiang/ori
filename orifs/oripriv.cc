@@ -1229,6 +1229,7 @@ OriPriv::merge(ObjectHash hash)
     ObjectHash lca;
 
     lca = cDag.findLCA(p1, p2);
+    DLOG("\nobjhash 1: %s,\n2: %s,\nlca: %s", p1.hex().c_str(), p2.hex().c_str(), lca.hex().c_str());
 
     Commit c1 = headCommit;
     Commit c2 = repo->getCommit(p2);
@@ -1345,7 +1346,6 @@ OriPriv::merge(ObjectHash hash)
             DLOG("N       %s", e.filepath.c_str());
             OriFileInfo *info = new OriFileInfo();
             bool isSymlink = false;
-
             if (e.newAttrs.has(ATTR_SYMLINK)) {
                 isSymlink = e.newAttrs.getAs<bool>(ATTR_SYMLINK);
             }
@@ -1358,7 +1358,6 @@ OriPriv::merge(ObjectHash hash)
                 ASSERT(info->largeHash.isEmpty());
                 info->link = repo->getPayload(info->hash);
             }
-
             OriDir *parentDir = getDir(OriFile_Dirname(e.filepath));
             parentDir->add(OriFile_Basename(e.filepath), info->id);
             paths[e.filepath] = info;

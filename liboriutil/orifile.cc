@@ -386,7 +386,11 @@ OriFile_Dirname(const std::string &path)
     if (ix == std::string::npos) {
         return path;
     }
-    return path.substr(0, ix);
+    string dirname = path.substr(0, ix);
+    if (dirname == "") {
+        return "/";
+    }
+    return dirname;
 }
 
 // XXX: Debug Only
